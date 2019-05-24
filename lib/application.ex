@@ -1,7 +1,7 @@
 defmodule Main do
   use Application
 
-  def start_link() do
+  def start_link do
     children = [
       Command.DiscordConsumer,
       {Event.Persister, name: Event.Persister}

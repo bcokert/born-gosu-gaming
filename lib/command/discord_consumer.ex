@@ -26,7 +26,7 @@ defmodule Command.DiscordConsumer do
     case msg.content do
       "!events" <> rest ->
         rest
-          |> String.trim()  
+          |> String.trim()
           |> input_to_command(msg)
           |> Command.run_command()
       str ->

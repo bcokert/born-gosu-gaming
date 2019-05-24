@@ -14,32 +14,25 @@ defmodule Event do
   require Logger
   alias Nostrum.Api
 
-  def run_command(command) do
-    channel = case Nostrum.Cache.ChannelCache.get(command.discord_msg.channel_id) do
-      {:ok, channel} ->
-        channel
-      {:error, reason} ->
-        Logger.warn "Did not find #{command.discord_msg.channel_id} in channel cache: #{reason}"
+  def run(command) do
+    with {:ok, channel} <- Nostrum.Cache.ChannelCache.get(command.discord_msg.channel_id) do
+      Logger.info "Running #{command.command}(#{Enum.join(command.args, ", ")}) from #{command.discord_msg.author.username}\##{command.discord_msg.author.discriminator} in #{channel.name}"
     end
-    Logger.info "Running #{command} in #{channel.name}"
-    case command do
-      %Command{command: "help", args: _, discord_msg: discord_msg} ->
-        help(discord_msg)
-      %Command{command: "soon", args: _, discord_msg: discord_msg} ->
-        soon(discord_msg)
-      %Command{command: "me", args: _, discord_msg: discord_msg} ->
-        me(discord_msg)
-      %Command{command: "add", args: [name, date | _], discord_msg: discord_msg} ->
-        add(discord_msg, name, date)
-      %Command{command: "remove", args: [name | _], discord_msg: discord_msg} ->
-        remove(discord_msg, name)
-      %Command{command: "register", args: [name | users], discord_msg: discord_msg} ->
-        register(discord_msg, name, users)
-      %Command{command: "unregister", args: [name | users], discord_msg: discord_msg} ->
-        unregister(discord_msg, name, users)
-      _ ->
-        Api.create_message(command.discord_msg.channel_id, "Unknown command: #{command}")
-    end
+    do_command(command.command, command.args, command.discord_msg)
+  end
+
+  defp do_command("help", _, m), do: help(m)
+  defp do_command("soon", _, m), do: soon(m)
+  defp do_command("me", _, m), do: me(m)
+  defp do_command("add", [name, date | _], m), do: add(m, name, date)
+  defp do_command("remove", [name | _], m), do: remove(m, name)
+  defp do_command("register", [name | users], m), do: register(m, name, users)
+  defp do_command("unregister", [name | users], m), do: unregister(m, name, users)
+  defp do_command(name, args, m), do: unknown(m.channel_id, name, args, m.author.username, m.author.discriminator)
+
+  defp unknown(channel_id, name, args, username, discriminator) do
+    cmd = "#{name}(#{Enum.join(args, ", ")}) from #{username}\##{discriminator}"
+    Api.create_message(channel_id, "Unknown command or args: #{cmd}")
   end
 
   defp help(discord_msg) do
@@ -98,7 +91,7 @@ defmodule Event do
     case Event.Persister.get_all() do
       :error ->
         Api.create_message(discord_msg.channel_id, "Oops! Something went wrong fetching upcoming events. Please tell PhysicsNoob")
-      [] -> 
+      [] ->
         Api.create_message(discord_msg.channel_id, "No Events are Upcoming")
       events ->
         event_lines = Enum.map(events, fn e -> soon_format_event(e) end)
@@ -118,7 +111,7 @@ defmodule Event do
         "@#{event.creator}"
     end
 
-    participants = Enum.map(event.participants, fn p -> 
+    participants = Enum.map(event.participants, fn p ->
       case Nostrum.Cache.UserCache.get(p) do
         {:ok, %Nostrum.Struct.User{username: name, discriminator: disc}} ->
           name <> "#" <> disc
