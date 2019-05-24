@@ -101,10 +101,10 @@ defmodule Event do
       [] -> 
         Api.create_message(discord_msg.channel_id, "No Events are Upcoming")
       events ->
-        eventLines = Enum.map(events, fn e -> soon_format_event(e) end)
+        event_lines = Enum.map(events, fn e -> soon_format_event(e) end)
         Api.create_message(discord_msg.channel_id, """
         Upcoming Events:
-          #{Enum.join(eventLines, "\n  ")}
+          #{Enum.join(event_lines, "\n  ")}
         """)
     end
   end

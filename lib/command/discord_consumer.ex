@@ -34,7 +34,7 @@ defmodule Command.DiscordConsumer do
              lower <- String.downcase(str),
              trimmed <- String.trim(lower),
              {:reply, {resp, img_bytes}} <- Command.Butler.talk(trimmed, msg) do
-          if length(img_bytes) == 0 do
+          if Enum.empty?(img_bytes) do
             Nostrum.Api.create_message(msg.channel_id, resp)
           else
             Nostrum.Api.create_message(msg.channel_id, [content: resp, file: %{name: "motivation.jpg", body: to_string(img_bytes)}])

@@ -23,7 +23,7 @@ defmodule Event.Persister do
   end
 
   def init(:ok) do
-    case :dets.open_file(:"db/eventPeristence", [type: :set]) do
+    case :dets.open_file(:"db/eventPeristence", [type: :set]) do  
       {:ok, table} ->
         {:ok, table}
       {:error, reason} ->

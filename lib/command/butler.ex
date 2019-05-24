@@ -1,7 +1,7 @@
 defmodule Command.Butler do
   require Logger
 
-  @type reply :: {:reply, { String.t(), [integer]}}
+  @type reply :: {:reply, {String.t(), [integer]}}
   @type noreply :: {:noreply}
 
   def make_reply(str, bytes \\ [])
@@ -13,7 +13,7 @@ defmodule Command.Butler do
 
   @spec make_reply(String.t(), [integer]) :: reply
   def make_reply(str, bytes) do
-    {:reply, { str, bytes }}
+    {:reply, {str, bytes}}
   end
 
   def talk(str, discord_msg) do
