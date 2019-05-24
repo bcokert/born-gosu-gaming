@@ -13,6 +13,7 @@ defmodule Event do
 
   require Logger
   alias Nostrum.Api
+  alias Nostrum.Struct.User
 
   def run(command) do
     with {:ok, channel} <- Nostrum.Cache.ChannelCache.get(command.discord_msg.channel_id) do
@@ -28,6 +29,7 @@ defmodule Event do
   defp do_command("remove", [name | _], m), do: remove(m, name)
   defp do_command("register", [name | users], m), do: register(m, name, users)
   defp do_command("unregister", [name | users], m), do: unregister(m, name, users)
+  defp do_command("tryout", [user1, user2 | _], m), do: tryout(m, user1, user2)
   defp do_command(name, args, m), do: unknown(m.channel_id, name, args, m.author.username, m.author.discriminator)
 
   defp unknown(channel_id, name, args, username, discriminator) do
@@ -186,5 +188,27 @@ defmodule Event do
   defp unregister(discord_msg, name, users) do
     Logger.info "Running unimplemented unregister(#{name}, [#{Enum.join(users, ", ")}]) command"
     Api.create_message(discord_msg.channel_id, "WIP")
+  end
+
+  def tryout(discord_msg, raw_mentor, raw_mentee) do
+    guild = Nostrum.Cache.GuildCache.get!(discord_msg.guild_id)
+    mentors = "Mentor"
+      |> DiscordQuery.role_by_name(guild)
+      |> DiscordQuery.users_with_role(guild)
+      |> DiscordQuery.matching_users(raw_mentor)
+    non_members = "Non-Born Gosu"
+      |> DiscordQuery.role_by_name(guild)
+      |> DiscordQuery.users_with_role(guild)
+      |> DiscordQuery.matching_users(raw_mentee)
+    output = (for m <- mentors, n <- non_members, do: {m, n})
+      |> options_for_pairings()
+      |> Enum.join("\n")
+
+    Api.create_message(discord_msg.channel_id, output)
+  end
+
+  defp options_for_pairings([]), do: []
+  defp options_for_pairings([{%User{username: n1, discriminator: d1}, %User{username: n2, discriminator: d2}} | rest]) do
+    ["Enter `+#{length(rest)+1}` to run '+tryout @#{n1}##{d1} @#{n2}##{d2}'" | options_for_pairings(rest)]
   end
 end

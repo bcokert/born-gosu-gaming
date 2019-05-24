@@ -29,6 +29,11 @@ defmodule Command.DiscordConsumer do
           |> String.trim()
           |> input_to_command(msg)
           |> Command.run_command()
+      "!tryout" <> rest ->
+        "tryout" <> rest
+          |> String.trim()
+          |> input_to_command(msg)
+          |> Command.run_command
       str ->
         with true <- Enum.any?(msg.mentions, fn u -> u.id == Nostrum.Cache.Me.get().id end),
              lower <- String.downcase(str),
