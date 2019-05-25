@@ -2,14 +2,50 @@ defmodule EventTest do
   use ExUnit.Case, async: true
   doctest Event
 
-  test "has the correct defaults" do
+  test "Event has the correct defaults" do
     {:ok, date, _} = DateTime.from_iso8601("2013-01-22 08:39:06+00")
-    a = %Event{name: "nom", date: date, creator: "16231"}
-    assert a.name == "nom"
-    assert a.date == date
-    assert a.creator == "16231"
-    assert a.participants == []
-    assert a.description == nil
-    assert a.link == nil
+    event = %Event{name: "nom", date: date, creator: "16231"}
+    
+    assert %Event{
+      name: "nom",
+      date: date,
+      creator: "16231",
+      participants: [],
+      description: nil,
+      link: nil,
+    } = event
+  end
+
+  test "help" do
+    dmsg = %Nostrum.Struct.Message{
+      channel_id: 123,
+      author: %Nostrum.Struct.User{id: 444},
+      content: "!events help",
+      mentions: []
+    }
+    Command.DiscordConsumer.handle_event({:MESSAGE_CREATE, {dmsg}, nil})
+
+    receive do
+      {123, msg} ->
+        assert msg == "I'll dm you"
+    after
+      50 ->
+        assert false
+    end
+
+    receive do
+      {456, msg} ->
+        assert msg =~ "Available commands:"
+        assert msg =~ "- help"
+        assert msg =~ "- soon"
+        assert msg =~ "- me"
+        assert msg =~ "- add"
+        assert msg =~ "- remove"
+        assert msg =~ "- register"
+        assert msg =~ "- unregister"
+    after
+      50 ->
+        assert false
+    end
   end
 end

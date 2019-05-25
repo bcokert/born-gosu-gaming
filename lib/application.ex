@@ -2,10 +2,20 @@ defmodule Main do
   use Application
 
   def start_link do
-    children = [
-      Command.DiscordConsumer,
-      {Event.Persister, name: Event.Persister}
-    ]
+    children = if Mix.env != :test do
+      [
+        {Command.DiscordConsumer, name: Command.DiscordConsumer},
+        {Event.Persister, name: Event.Persister}
+      ]
+    else
+      # We don't startup the Nostrum application or the consumer, but we still need the cache
+      # Normally the app starts up the cache, so we do that here instead
+      # Note that the cache will still be empty - tests need to populate it
+      Nostrum.Application.setup_ets_tables()
+      [
+        {Event.Persister, name: Event.Persister}
+      ]
+    end
 
     Supervisor.start_link(children, strategy: :one_for_one)
   end

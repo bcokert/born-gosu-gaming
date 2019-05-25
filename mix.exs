@@ -7,7 +7,8 @@ defmodule ExampleConsumer.MixProject do
       version: "1.0.0",
       elixir: "~> 1.8",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      elixirc_paths: elixirc_paths(Mix.env)
     ]
   end
 
@@ -20,8 +21,12 @@ defmodule ExampleConsumer.MixProject do
 
   defp deps do
     [
-      {:nostrum, "~> 0.3"},
+      {:nostrum, "~> 0.3", runtime: Mix.env != :test},
       {:credo, "~> 1.0.0", only: [:dev, :test], runtime: false}
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/helpers"]
+  defp elixirc_paths(_), do: ["lib"]
+
 end

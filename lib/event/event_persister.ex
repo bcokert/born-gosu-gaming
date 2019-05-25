@@ -23,29 +23,25 @@ defmodule Event.Persister do
   end
 
   def init(:ok) do
-    with {:ok, table} <- :dets.open_file(:"db/eventPeristence", [type: :set]) do
-      {:ok, table}
-    end
+    {:ok, table} = :dets.open_file(Application.get_env(:born_gosu_gaming, :db_file), [type: :set])
+    {:ok, table}
   end
 
   defp first_or_none([first | _]), do: first
   defp first_or_none([]), do: :none
 
   def handle_call({:get, name}, _from, table) do
-    with result_list <- :dets.lookup(table, name) do
-      {:reply, first_or_none(result_list), table}
-    end
+    result_list = :dets.lookup(table, name)
+    {:reply, first_or_none(result_list), table}
   end
 
   def handle_call({:get_all}, _from, table) do
-    with results <- :dets.traverse(table, fn obj -> {:continue, elem(obj, 1)} end) do
-      {:reply, results, table}
-    end
+    results = :dets.traverse(table, fn obj -> {:continue, elem(obj, 1)} end)
+    {:reply, results, table}
   end
 
   def handle_call({:create, event}, _from, table) do
-    with :ok <- :dets.insert(table, {event.name, event}) do
-      {:reply, event, table}
-    end
+    :ok = :dets.insert(table, {event.name, event})
+    {:reply, event, table}
   end
 end
