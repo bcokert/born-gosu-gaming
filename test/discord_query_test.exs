@@ -4,45 +4,9 @@ defmodule DiscordQueryTest do
 
   alias Nostrum.Struct.User
   alias Nostrum.Struct.Guild
-  alias Nostrum.Struct.Guild.Member
   alias Nostrum.Struct.Guild.Role
 
-  def user do
-    %User{
-      avatar: "XXXXXXXXXXXXXX",
-      bot: false,
-      discriminator: "XXXX",
-      email: nil,
-      id: 1234567736329846798,
-      mfa_enabled: nil,
-      username: "XXXXX",
-      verified: nil
-    }
-  end
-
-  def member do
-    %Member{
-      deaf: false,
-      joined_at: "2019-05-20T16:16:12.363574+00:00",
-      mute: false,
-      nick: nil,
-      roles: [],
-      user: user()
-    }
-  end
-
-  def role do
-    %Role{
-      color: 0,
-      hoist: true,
-      id: 234264626636234,
-      managed: false,
-      mentionable: true,
-      name: "XXXXXXXXXX",
-      permissions: 6432632,
-      position: 232642364
-    }
-  end
+  import TestStructs, only: [member: 0, user: 0, role: 0]
 
   def basic_guild do
     %Guild{
@@ -73,12 +37,12 @@ defmodule DiscordQueryTest do
     [guild: basic_guild()]
   end
 
-  test "role_by_name" do
-    assert %Role{id: 11, name: "role1"} = DiscordQuery.role_by_name("role1", basic_guild())
+  test "role_by_name", context do
+    assert %Role{id: 11, name: "role1"} = DiscordQuery.role_by_name("role1", context[:guild])
   end
 
-  test "users_with_role as id" do
-    users = DiscordQuery.users_with_role(11, basic_guild())
+  test "users_with_role as id", context do
+    users = DiscordQuery.users_with_role(11, context[:guild])
 
     assert [
       %User{username: "user1"},
@@ -87,8 +51,8 @@ defmodule DiscordQueryTest do
     ] = users
   end
 
-  test "users_with_role as name" do
-    users = DiscordQuery.users_with_role("role1", basic_guild())
+  test "users_with_role as name", context do
+    users = DiscordQuery.users_with_role("role1", context[:guild])
 
     assert [
       %User{username: "user1"},
@@ -97,8 +61,8 @@ defmodule DiscordQueryTest do
     ] = users
   end
 
-  test "users_with_role as struct" do
-    users = DiscordQuery.users_with_role(%Role{id: 11}, basic_guild())
+  test "users_with_role as struct", context do
+    users = DiscordQuery.users_with_role(%Role{id: 11}, context[:guild])
 
     assert [
       %User{username: "user1"},
@@ -131,39 +95,39 @@ defmodule DiscordQueryTest do
     assert [] = DiscordQuery.matching_users(users, "q")
   end
 
-  test "admins" do
+  test "admins", context do
     assert [
       %User{username: "user3"},
       %User{username: "user5"},
       %User{username: "user6"},
-    ] = DiscordQuery.admins(basic_guild())
+    ] = DiscordQuery.admins(context[:guild])
   end
 
-  test "mentors" do
+  test "mentors", context do
     assert [
       %User{username: "user2"},
       %User{username: "user3"},
       %User{username: "user4"},
-    ] = DiscordQuery.mentors(basic_guild())
+    ] = DiscordQuery.mentors(context[:guild])
   end
 
-  test "members" do
+  test "members", context do
     assert [
       %User{username: "user4"},
       %User{username: "user5"},
-    ] = DiscordQuery.members(basic_guild())
+    ] = DiscordQuery.members(context[:guild])
   end
 
-  test "non_members" do
+  test "non_members", context do
     assert [
       %User{username: "user7"},
-    ] = DiscordQuery.non_members(basic_guild())
+    ] = DiscordQuery.non_members(context[:guild])
   end
 
-  test "tryouts" do
+  test "tryouts", context do
     assert [
       %User{username: "user8"},
-    ] = DiscordQuery.tryouts(basic_guild())
+    ] = DiscordQuery.tryouts(context[:guild])
   end
 
   test "user_has_role? with user_id", context do

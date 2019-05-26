@@ -2,7 +2,9 @@ defmodule EventTest do
   use ExUnit.Case, async: true
   doctest Event
 
-  test "Event has the correct defaults" do
+  import TestStructs, only: [message: 0]
+
+  test "%Event has the correct defaults" do
     {:ok, date, _} = DateTime.from_iso8601("2013-01-22 08:39:06+00")
     event = %Event{name: "nom", date: date, creator: "16231"}
     
@@ -17,12 +19,7 @@ defmodule EventTest do
   end
 
   test "help" do
-    dmsg = %Nostrum.Struct.Message{
-      channel_id: 123,
-      author: %Nostrum.Struct.User{id: 444},
-      content: "!events help",
-      mentions: []
-    }
+    dmsg = %{message() | content: "!events help"}
     Command.DiscordConsumer.handle_event({:MESSAGE_CREATE, {dmsg}, nil})
 
     receive do
