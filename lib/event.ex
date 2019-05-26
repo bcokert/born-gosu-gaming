@@ -153,25 +153,15 @@ defmodule Event do
   end
 
   defp add(discord_msg, name, date_str) do
-    case DateTime.from_iso8601(date_str) do
-      {:ok, date, _} ->
-        case Event.Persister.create(%Event{name: name, date: date, creator: discord_msg.author.id}) do
-          :error ->
-            @api.create_message(discord_msg.channel_id, "Oops! Something went wrong creating that event. Please tell PhysicsNoob")
-          event ->
-            creator = case Nostrum.Cache.UserCache.get(discord_msg.author.id) do
-              {:ok, %Nostrum.Struct.User{username: name, discriminator: disc}} ->
-                name <> "#" <> disc
-              {:error, reason} ->
-                Logger.warn("Failed to get creator from cache in 'add': #{reason}")
-                "@#{event.creator}"
-            end
-            @api.create_message(discord_msg.channel_id, """
-            Event Created!
-              #{event.name} by #{creator} on #{DateTime.to_date(event.date)} at #{event.date.hour}:#{event.date.minute} (#{event.date.time_zone})
-            """)
-        end
-      {:error, _} ->
+    creator = Nostrum.Cache.UserCache.get!(discord_msg.author.id)
+    with {:ok, date, _} <- DateTime.from_iso8601(date_str) do
+      event = Event.Persister.create(%Event{name: name, date: date, creator: discord_msg.author.id})
+      @api.create_message(discord_msg.channel_id, """
+        Event Created!
+          "#{event.name}" by #{creator} on #{DateTime.to_date(event.date)} at #{event.date.hour}:#{event.date.minute} (#{event.date.time_zone})
+        """)
+    else
+      _ ->
         @api.create_message(discord_msg.channel_id, "Illegal input date: #{date_str}. Compare it to '2021-01-19T16:30:00-08'")
     end
   end

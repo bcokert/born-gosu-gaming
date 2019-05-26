@@ -12,7 +12,7 @@ defmodule Command.DiscordConsumer do
   @spec input_to_command(String.t(), Nostrum.Struct.Message.t()) :: %Command{}
   def input_to_command(input, discord_msg) do
     input
-      |> String.split(~r/\s+/)
+      |> OptionParser.split()
       |> Enum.filter(fn s -> String.length(s) > 0 end)
       |> list_to_command(discord_msg)
   end
