@@ -7,12 +7,13 @@ defmodule Event do
     date: DateTime.t(),
     creator: Nostrum.Snowflake.t(),
     participants: [Nostrum.Snowflake.t()],
-    link: String.t(),
-    description: String.t()
+    link: String.t() | nil,
+    description: String.t() | nil
   }
 
   require Logger
   alias Nostrum.Struct.User
+  alias Nostrum.Struct.Message
 
   @api Application.get_env(:born_gosu_gaming, :discord_api)
 
@@ -166,9 +167,34 @@ defmodule Event do
     end
   end
 
-  defp remove(discord_msg, name) do
-    Logger.info "Running unimplemented remove(#{name}) command"
-    @api.create_message(discord_msg.channel_id, "WIP")
+  defp remove(%Message{author: %User{id: author_id}, channel_id: channel_id, guild_id: guild_id}, name) do
+    with {:ok, %Event{name: name, creator: creator_id, date: date, participants: participants, link: link}} <- Event.Persister.get(name),
+         guild <- Nostrum.Cache.GuildCache.get!(guild_id),
+         true <- permission_remove(author_id, creator_id, guild),
+         :ok <- Event.Persister.remove(name)
+    do
+      @api.create_message(channel_id, "Ok, I'll remove \"#{name}\" that was scheduled for #{date}.")
+      if length(participants) > 0 do
+        @api.create_message(channel_id, "Make sure to let the #{length(participants)} know!")
+      end
+      if link != nil do
+        @api.create_message(channel_id, "You might have to cleanup #{link} as well.")
+      end
+    else
+      {:ok, :none} ->
+        @api.create_message(channel_id, "It doesn't look like that event exists. Are you sure you spelled it right?")
+      {false, reason} ->
+        @api.create_message(channel_id, reason)
+    end
+  end
+
+  defp permission_remove(author_id, creator_id, guild) do
+    %User{username: creator_name} = Nostrum.Cache.UserCache.get!(creator_id)
+    if creator_id == author_id or DiscordQuery.user_has_role?(author_id, "Admins", guild) do
+      true
+    else
+      {false, "Only the creator (#{creator_name}) or an admin can remove events"}
+    end
   end
 
   defp register(discord_msg, name, users) do
@@ -181,15 +207,13 @@ defmodule Event do
     @api.create_message(discord_msg.channel_id, "WIP")
   end
 
-  def tryout(discord_msg, raw_mentor, raw_mentee) do
+  def tryout(discord_msg, raw_mentor, raw_mentee) when is_binary(raw_mentor) and is_binary(raw_mentee) do
     guild = Nostrum.Cache.GuildCache.get!(discord_msg.guild_id)
-    mentors = "Mentor"
-      |> DiscordQuery.role_by_name(guild)
-      |> DiscordQuery.users_with_role(guild)
+    mentors = guild
+      |> DiscordQuery.mentors()
       |> DiscordQuery.matching_users(raw_mentor)
-    non_members = "Non-Born Gosu"
-      |> DiscordQuery.role_by_name(guild)
-      |> DiscordQuery.users_with_role(guild)
+    non_members = guild
+      |> DiscordQuery.non_members()
       |> DiscordQuery.matching_users(raw_mentee)
     output = (for m <- mentors, n <- non_members, do: {m, n})
       |> options_for_pairings()
