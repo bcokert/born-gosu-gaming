@@ -28,34 +28,35 @@ defmodule Event.Persister do
   end
 
   def init(:ok) do
-    {:ok, table} = :dets.open_file(Application.get_env(:born_gosu_gaming, :db_file), [type: :set])
-    {:ok, table}
+    {:ok, event_table} = :dets.open_file(Application.get_env(:born_gosu_gaming, :event_db), [type: :set])
+    {:ok, participant_table} = :dets.open_file(Application.get_env(:born_gosu_gaming, :participant_db), [type: :set])
+    {:ok, {event_table, participant_table}}
   end
 
   defp first_or_none([first | _]), do: elem(first, 1)
   defp first_or_none([]), do: :none
 
-  def handle_call({:get, name}, _from, table) do
-    with results when is_list(results) <- :dets.lookup(table, name) do
-      {:reply, {:ok, first_or_none(results)}, table}
+  def handle_call({:get, name}, _from, {event_table, participant_table}) do
+    with results when is_list(results) <- :dets.lookup(event_table, name) do
+      {:reply, {:ok, first_or_none(results)}, {event_table, participant_table}}
     else
       {:error, reason} ->
-        {:reply, {:error, reason}, table}
+        {:reply, {:error, reason}, {event_table, participant_table}}
     end
   end
 
-  def handle_call({:get_all}, _from, table) do
-    results = :dets.traverse(table, fn obj -> {:continue, elem(obj, 1)} end)
-    {:reply, results, table}
+  def handle_call({:get_all}, _from, {event_table, participant_table}) do
+    results = :dets.traverse(event_table, fn obj -> {:continue, elem(obj, 1)} end)
+    {:reply, results, {event_table, participant_table}}
   end
 
-  def handle_call({:create, event}, _from, table) do
-    :ok = :dets.insert(table, {event.name, event})
-    {:reply, event, table}
+  def handle_call({:create, event}, _from, {event_table, participant_table}) do
+    :ok = :dets.insert(event_table, {event.name, event})
+    {:reply, event, {event_table, participant_table}}
   end
 
-  def handle_call({:remove, name}, _from, table) do
-    result = :dets.delete(table, name)
-    {:reply, result, table}
+  def handle_call({:remove, name}, _from, {event_table, participant_table}) do
+    result = :dets.delete(event_table, name)
+    {:reply, result, {event_table, participant_table}}
   end
 end

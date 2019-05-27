@@ -52,7 +52,7 @@ defmodule Command.Butler do
           "Communism jokes aren't funny unless everyone gets them.",
           "I've been told I can be condescending. That means I talk down to people.",
           "What's the difference between a dirty old bus stop and a lobster with breast implants? One is a crusty bus station, the other one is a busty crustacean.",
-          "Did you know there that in the Canary Islands there are no Canaries? Same with the Virgin Islands, there are no canaries there either.",
+          "Did you know that in the Canary Islands there are no Canaries? Same with the Virgin Islands, there are no canaries there either.",
         ]
           |> Enum.random()
           |> make_reply()

@@ -6,7 +6,8 @@ config :nostrum,
 
 config :born_gosu_gaming,
   discord_api: Nostrum.Api,
-  db_file: :"db/eventPeristence"
+  event_db: :"db/event",
+  participant_db: :"db/participant"
 
 import_config("./secret/nostrum.exs")
 
