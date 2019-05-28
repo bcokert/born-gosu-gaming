@@ -29,7 +29,7 @@ defmodule Event do
   defp do_command("me", _, m), do: me(m)
   defp do_command("add", [name, date | _], m), do: add(m, name, date)
   defp do_command("remove", [name | _], m), do: remove(m, name)
-  defp do_command("register", [name | users], m), do: register(m, name, users)
+  defp do_command("register", [name | _], m), do: register(m.channel_id, m.author.id, name, m.mentions)
   defp do_command("unregister", [name | users], m), do: unregister(m, name, users)
   defp do_command("tryout", [user1, user2 | _], m), do: tryout(m, user1, user2)
   defp do_command(name, args, m), do: unknown(m.channel_id, name, args, m.author.username, m.author.discriminator)
@@ -117,8 +117,8 @@ defmodule Event do
 
     participants = Enum.map(event.participants, fn p ->
       case Nostrum.Cache.UserCache.get(p) do
-        {:ok, %Nostrum.Struct.User{username: name, discriminator: disc}} ->
-          name <> "#" <> disc
+        {:ok, %Nostrum.Struct.User{username: name}} ->
+          name
         {:error, reason} ->
           Logger.warn("Failed to get participant from cache in 'soon': #{reason}")
           "@#{p}"
@@ -143,8 +143,7 @@ defmodule Event do
     #{event.name}
         By #{creator}
         #{DateTime.to_date(event.date)} at #{event.date.hour}:#{event.date.minute} (#{event.date.time_zone})#{link}#{description}
-        Participants (#{length(participants)}):
-          #{Enum.join(participants, "\n  ")}
+        Participants (#{length(participants)}): #{Enum.join(participants, ", ")}
     """
   end
 
@@ -197,9 +196,38 @@ defmodule Event do
     end
   end
 
-  defp register(discord_msg, name, users) do
-    Logger.info "Running unimplemented register(#{name}, [#{Enum.join(users, ", ")}]) command"
-    @api.create_message(discord_msg.channel_id, "WIP")
+  defp register(channel_id, author_id, name, users) do
+    with {:ok, event} <- Event.Persister.get(name),
+         {unregistered, registered} <- find_already_registered(users, event),
+         user_ids <- Enum.uniq(Enum.map(unregistered, fn u -> u.id end) ++ event.participants),
+         :ok <- Event.Persister.register(name, user_ids),
+         creator <- Nostrum.Cache.UserCache.get!(event.creator),
+         %User{id: creator_id} = creator do
+      if length(registered) > 0 do
+        @api.create_message(channel_id, "#{Enum.join(Enum.map(registered, fn u -> u.username end), ", ")} already registered")
+      end
+      if length(unregistered) > 0 do
+        @api.create_message(channel_id, "Alright I've registered #{Enum.join(Enum.map(unregistered, fn u -> u.username end), ", ")} for \"#{name}\"")
+        if author_id == creator_id do
+          @api.create_message(channel_id, "You take care of telling them about the event and keeping up with them.")
+          @api.create_message(channel_id, "I'll make sure they get reminders about when the event is happening.")
+        else
+          @api.create_message(channel_id, "Pinging #{creator} so they can follow up.")
+          @api.create_message(channel_id, "I'll make sure the participants get reminders about when the event is happening.")
+        end
+      end
+    else
+      {:error, :event_not_exists} ->
+        @api.create_message(channel_id, "It doesn't look like that event exists. Are you sure you spelled it right?")
+    end
+  end
+
+  defp find_already_registered(users, event) do
+    registered = users
+      |> Enum.filter(fn u -> u.id in event.participants end)
+    unregistered = users
+      |> Enum.filter(fn u -> u.id not in event.participants end)
+    {unregistered, registered}
   end
 
   defp unregister(discord_msg, name, users) do

@@ -27,9 +27,14 @@ defmodule Event.Persister do
     GenServer.call(Event.Persister, {:remove, name})
   end
 
+  @spec register(String.t(), [Nostrum.Snowflake.t()]) :: :ok | {:error, any}
+  def register(name, participant_ids) do
+    GenServer.call(Event.Persister, {:register, name, participant_ids})
+  end
+
   def init(:ok) do
     {:ok, event_table} = :dets.open_file(Application.get_env(:born_gosu_gaming, :event_db), [type: :set])
-    {:ok, participant_table} = :dets.open_file(Application.get_env(:born_gosu_gaming, :participant_db), [type: :set])
+    {:ok, participant_table} = :dets.open_file(Application.get_env(:born_gosu_gaming, :participant_db), [type: :bag])
     {:ok, {event_table, participant_table}}
   end
 
@@ -58,5 +63,16 @@ defmodule Event.Persister do
   def handle_call({:remove, name}, _from, {event_table, participant_table}) do
     result = :dets.delete(event_table, name)
     {:reply, result, {event_table, participant_table}}
+  end
+
+  def handle_call({:register, name, participant_ids}, _from, {event_table, participant_table}) do
+    with results when is_list(results) <- :dets.lookup(event_table, name),
+         event <- first_or_none(results) do
+      :ok = :dets.insert(event_table, {name, %{event | participants: participant_ids}})
+      {:reply, :ok, {event_table, participant_table}}
+    else
+      :none ->
+        {:reply, {:error, :event_not_exists}, {event_table, participant_table}}
+    end
   end
 end

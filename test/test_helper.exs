@@ -1,6 +1,7 @@
 if File.exists?("test_db") do
-  File.rmdir!("test_db")
+  File.rm_rf!("test_db")
 end
+File.mkdir!("test_db")
 
 defmodule TestStructs do
   alias Nostrum.Struct.User
