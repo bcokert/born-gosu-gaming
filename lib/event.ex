@@ -30,7 +30,7 @@ defmodule Event do
   defp do_command("add", [name, date | _], m), do: add(m, name, date)
   defp do_command("remove", [name | _], m), do: remove(m, name)
   defp do_command("register", [name | _], m), do: register(m.channel_id, m.author.id, name, m.mentions)
-  defp do_command("unregister", [name | users], m), do: unregister(m, name, users)
+  defp do_command("unregister", [name | _], m), do: unregister(m.channel_id, name, m.mentions)
   defp do_command("tryout", [user1, user2 | _], m), do: tryout(m, user1, user2)
   defp do_command(name, args, m), do: unknown(m.channel_id, name, args, m.author.username, m.author.discriminator)
 
@@ -230,9 +230,24 @@ defmodule Event do
     {unregistered, registered}
   end
 
-  defp unregister(discord_msg, name, users) do
-    Logger.info "Running unimplemented unregister(#{name}, [#{Enum.join(users, ", ")}]) command"
-    @api.create_message(discord_msg.channel_id, "WIP")
+  defp unregister(channel_id, name, users) do
+    with {:ok, event} <- Event.Persister.get(name),
+         {unregistered, registered} <- find_already_registered(users, event),
+         registered_ids <- Enum.map(registered, fn u -> u.id end),
+         user_ids <- Enum.filter(event.participants, fn p -> p not in registered_ids end),
+         :ok <- Event.Persister.register(name, user_ids) do
+      if length(unregistered) > 0 do
+        @api.create_message(channel_id, "#{Enum.join(Enum.map(unregistered, fn u -> u.username end), ", ")} not registered for this event.")
+      end
+      if length(registered) > 0 do
+        @api.create_message(channel_id, "Alright I've unregistered #{Enum.join(Enum.map(registered, fn u -> u.username end), ", ")} from \"#{name}\"")
+      else
+        @api.create_message(channel_id, "Looks like there was noone registered that I needed to unregister.")
+      end
+    else
+      {:error, :event_not_exists} ->
+        @api.create_message(channel_id, "It doesn't look like that event exists. Are you sure you spelled it right?")
+    end
   end
 
   def tryout(discord_msg, raw_mentor, raw_mentee) when is_binary(raw_mentor) and is_binary(raw_mentee) do
