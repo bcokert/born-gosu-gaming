@@ -11,9 +11,14 @@ defmodule Event.Persister do
     GenServer.call(Event.Persister, {:get, name})
   end
 
-  @spec get_all() :: [%Event{}]
-  def get_all do
-    GenServer.call(Event.Persister, {:get_all})
+  @spec get_all(integer | nil, integer | nil, integer | nil) :: [%Event{}]
+  def get_all(author_id \\ nil, participant_id \\ nil, within_seconds \\ nil) do
+    filters = [
+      date_filter(within_seconds),
+      author_filter(author_id),
+      participant_filter(participant_id)
+    ]
+    GenServer.call(Event.Persister, {:get_all, filters})
   end
 
   @spec create(%Event{}) :: %Event{}
@@ -41,18 +46,42 @@ defmodule Event.Persister do
   defp first_or_none([first | _]), do: elem(first, 1)
   defp first_or_none([]), do: :none
 
-  def handle_call({:get, name}, _from, {event_table, participant_table}) do
-    with results when is_list(results) <- :dets.lookup(event_table, name) do
-      {:reply, {:ok, first_or_none(results)}, {event_table, participant_table}}
-    else
-      {:error, reason} ->
-        {:reply, {:error, reason}, {event_table, participant_table}}
+  defp filter_by(filters) do
+    fn {_, event} ->
+      Enum.all?(filters, fn f -> f.(event) end)
+        |> filter_result_to_response(event)
     end
   end
 
-  def handle_call({:get_all}, _from, {event_table, participant_table}) do
-    results = :dets.traverse(event_table, fn obj -> {:continue, elem(obj, 1)} end)
-    {:reply, results, {event_table, participant_table}}
+  defp filter_result_to_response(true, event), do: {:continue, event}
+  defp filter_result_to_response(false, _), do: :continue
+
+  defp date_filter(nil), do: fn _ -> true end
+  defp date_filter(within_seconds) when within_seconds > 0 do
+    {:ok, now} = DateTime.now("Etc/UTC")
+    fn event -> DateTime.diff(event.date, now) <= within_seconds end
+  end
+
+  defp author_filter(nil), do: fn _ -> true end
+  defp author_filter(author_id) when is_integer(author_id) do
+    fn event -> event.creator == author_id end
+  end
+
+  defp participant_filter(nil), do: fn _ -> true end
+  defp participant_filter(participant_id) when is_integer(participant_id) do
+    fn event -> participant_id in event.participants end
+  end
+
+  def handle_call({:get, name}, _from, {event_table, participant_table}) do
+    with results when is_list(results) <- :dets.lookup(event_table, name) do
+      {:reply, {:ok, first_or_none(results)}, {event_table, participant_table}}
+    end
+  end
+
+  def handle_call({:get_all, filters}, _from, {event_table, participant_table}) do
+    with results when is_list(results) <- :dets.traverse(event_table, filter_by(filters)) do
+      {:reply, results, {event_table, participant_table}}
+    end
   end
 
   def handle_call({:create, event}, _from, {event_table, participant_table}) do

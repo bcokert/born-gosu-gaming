@@ -25,7 +25,7 @@ defmodule Event do
   end
 
   defp do_command("help", _, m), do: help(m)
-  defp do_command("soon", _, m), do: soon(m)
+  defp do_command("soon", _, m), do: soon(m.channel_id)
   defp do_command("me", _, m), do: me(m)
   defp do_command("add", [name, date | _], m), do: add(m, name, date)
   defp do_command("remove", [name | _], m), do: remove(m, name)
@@ -91,61 +91,36 @@ defmodule Event do
     end
   end
 
-  defp soon(discord_msg) do
-    case Event.Persister.get_all() do
-      :error ->
-        @api.create_message(discord_msg.channel_id, "Oops! Something went wrong fetching upcoming events. Please tell PhysicsNoob")
+  defp soon(channel_id) do
+    with events when events != [] <- Event.Persister.get_all(nil, nil, 60*60*24*7) do
+      events
+        |> Enum.map(fn e -> summarize_event(e) end)
+        |> (&(["Here's what's coming in the next 7 days:"] ++ &1)).()
+        |> Enum.join("\n")
+        |> (fn msg -> @api.create_message(channel_id, msg) end).()
+    else
       [] ->
-        @api.create_message(discord_msg.channel_id, "No Events are Upcoming")
-      events ->
-        event_lines = Enum.map(events, fn e -> soon_format_event(e) end)
-        @api.create_message(discord_msg.channel_id, """
-        Upcoming Events:
-          #{Enum.join(event_lines, "\n  ")}
-        """)
+        @api.create_message(channel_id, "Looks like there aren't any events in the next 7 days")
     end
   end
 
-  defp soon_format_event(event) do
-    creator = case Nostrum.Cache.UserCache.get(event.creator) do
-      {:ok, %Nostrum.Struct.User{username: name, discriminator: disc}} ->
-        name <> "#" <> disc
-      {:error, reason} ->
-        Logger.warn("Failed to get creator from cache in 'soon': #{reason}")
-        "@#{event.creator}"
-    end
+  defp summarize_event(%Event{name: name, date: date, creator: creator, participants: participant_ids, link: link}) do
+    %User{username: creator_name} = Nostrum.Cache.UserCache.get!(creator)
+    participant_names = participant_ids
+      |> Enum.map(fn p -> Nostrum.Cache.UserCache.get!(p) end)
+      |> Enum.map(fn u -> u.username end)
 
-    participants = Enum.map(event.participants, fn p ->
-      case Nostrum.Cache.UserCache.get(p) do
-        {:ok, %Nostrum.Struct.User{username: name}} ->
-          name
-        {:error, reason} ->
-          Logger.warn("Failed to get participant from cache in 'soon': #{reason}")
-          "@#{p}"
-      end
-    end)
-
-    description = case event.description do
-      nil ->
-        ""
-      _ ->
-        "\n`#{event.description}`"
-    end
-
-    link = case event.link do
-      nil ->
-        ""
-      _ ->
-        "\n#{event.link}"
-    end
-
-    """
-    #{event.name}
-        By #{creator}
-        #{DateTime.to_date(event.date)} at #{event.date.hour}:#{event.date.minute} (#{event.date.time_zone})#{link}#{description}
-        Participants (#{length(participants)}): #{Enum.join(participants, ", ")}
-    """
+    [
+      "__**#{name}**__ by **#{creator_name}** _on #{DateTime.to_date(date)} at #{date.hour}:#{date.minute} (#{date.time_zone})_",
+      "#{nil_to_string(link)}",
+      "Players (#{length(participant_names)}): #{Enum.join(participant_names, ", ")}\n"
+    ]
+      |> Enum.filter(fn s -> String.length(s) > 0 end)
+      |> Enum.join("\n")
   end
+
+  defp nil_to_string(nil), do: ""
+  defp nil_to_string(str), do: str
 
   defp me(discord_msg) do
     Logger.info "Running unimplemented me command"
