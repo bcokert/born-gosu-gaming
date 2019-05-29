@@ -64,6 +64,18 @@ defmodule Command.Butler do
         ]
           |> Enum.random()
           |> make_reply()
+      str =~ "send huskies" ->
+        [
+          "https://cdn.discordapp.com/attachments/141568367357198338/581619661674643469/image0.jpg",
+          "https://cdn.discordapp.com/attachments/141568367357198338/581619713940127745/image0.jpg",
+          "https://cdn.discordapp.com/attachments/141568367357198338/581619736157224970/image0.jpg",
+          "https://cdn.discordapp.com/attachments/141568367357198338/581619765030944778/image0.jpg",
+          "https://cdn.discordapp.com/attachments/141568367357198338/581619774359076866/image0.jpg",
+          "https://cdn.discordapp.com/attachments/141568367357198338/581619842650603530/image0.jpg",
+          "https://cdn.discordapp.com/attachments/141568367357198338/581619954697240768/image0.jpg",
+        ]
+          |> Enum.random()
+          |> make_reply()
       str =~ "i need some inspiration" ->
         with {:ok, {_, _, img_url}} <- :httpc.request('https://inspirobot.me/api?generate=true') do
           [
