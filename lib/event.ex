@@ -27,7 +27,8 @@ defmodule Event do
   defp do_command("soon", _, m), do: soon(m.channel_id)
   defp do_command("me", _, m), do: me(m.channel_id, m.author.id)
   defp do_command("mine", _, m), do: mine(m.channel_id, m.author.id)
-  defp do_command("add", [name, date | _], m), do: add(m.channel_id, m.author.id, name, date)
+  defp do_command("add", [name, date, link | _], m), do: add(m.channel_id, m.author.id, name, date, link)
+  defp do_command("add", [name, date | _], m), do: add(m.channel_id, m.author.id, name, date, nil)
   defp do_command("remove", [name | _], m), do: remove(m.channel_id, m.author.id, m.guild_id, name)
   defp do_command("register", [name | _], m), do: register(m.channel_id, m.author.id, name, m.mentions)
   defp do_command("unregister", [name | _], m), do: unregister(m.channel_id, name, m.mentions)
@@ -62,7 +63,7 @@ defmodule Event do
           Shows all events that you are managing
           eg: '!events mine'
 
-      - add <name> <date>
+      - add <name> <date> <optional_link>
           Creates an event with the given name and date.
           eg: '!events add "BG Super Tourney" 2019-08-22T17:00:00+00'
 
@@ -142,17 +143,13 @@ defmodule Event do
     end
   end
 
-  defp add(channel_id, author_id, name, date_str) do
-    creator = Nostrum.Cache.UserCache.get!(author_id)
+  defp add(channel_id, author_id, name, date_str, link) do
     with {:ok, date, _} <- DateTime.from_iso8601(date_str) do
-      event = Event.Persister.create(%Event{name: name, date: date, creator: author_id})
-      @api.create_message(channel_id, """
-        Event Created!
-          "#{event.name}" by #{creator} on #{DateTime.to_date(event.date)} at #{event.date.hour}:#{event.date.minute} (#{event.date.time_zone})
-        """)
+      event = Event.Persister.create(%Event{name: name, date: date, creator: author_id, link: link})
+      @api.create_message(channel_id, "Excellent! I've created that event for you.\n" <> summarize_event(event))
     else
       _ ->
-        @api.create_message(channel_id, "Illegal input date: #{date_str}. Compare it to '2021-01-19T16:30:00-08'")
+        @api.create_message(channel_id, "Looks like that date is incorrect: '#{date_str}'. Compare it to '2021-01-19T16:30:00-08'")
     end
   end
 
