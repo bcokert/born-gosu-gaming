@@ -13,7 +13,6 @@ defmodule Event do
 
   require Logger
   alias Nostrum.Struct.User
-  alias Nostrum.Struct.Message
 
   @api Application.get_env(:born_gosu_gaming, :discord_api)
 
@@ -24,14 +23,15 @@ defmodule Event do
     do_command(command.command, command.args, command.discord_msg)
   end
 
-  defp do_command("help", _, m), do: help(m)
+  defp do_command("help", _, m), do: help(m.channel_id, m.author.id)
   defp do_command("soon", _, m), do: soon(m.channel_id)
-  defp do_command("me", _, m), do: me(m)
-  defp do_command("add", [name, date | _], m), do: add(m, name, date)
-  defp do_command("remove", [name | _], m), do: remove(m, name)
+  defp do_command("me", _, m), do: me(m.channel_id, m.author.id)
+  defp do_command("mine", _, m), do: mine(m.channel_id, m.author.id)
+  defp do_command("add", [name, date | _], m), do: add(m.channel_id, m.author.id, name, date)
+  defp do_command("remove", [name | _], m), do: remove(m.channel_id, m.author.id, m.guild_id, name)
   defp do_command("register", [name | _], m), do: register(m.channel_id, m.author.id, name, m.mentions)
   defp do_command("unregister", [name | _], m), do: unregister(m.channel_id, name, m.mentions)
-  defp do_command("tryout", [user1, user2 | _], m), do: tryout(m, user1, user2)
+  defp do_command("tryout", [user1, user2 | _], m), do: tryout(m.channel_id, m.guild_id, user1, user2)
   defp do_command(name, args, m), do: unknown(m.channel_id, name, args, m.author.username, m.author.discriminator)
 
   defp unknown(channel_id, name, args, username, discriminator) do
@@ -39,55 +39,49 @@ defmodule Event do
     @api.create_message(channel_id, "Unknown command or args: #{cmd}")
   end
 
-  defp help(discord_msg) do
-    @api.create_message(discord_msg.channel_id, "I'll dm you")
+  defp help(channel_id, author_id) do
+    @api.create_message(channel_id, "I'll dm you")
+    with {:ok, channel} <- @api.create_dm(author_id) do
+      @api.create_message(channel.id, String.trim("""
+      Available commands:
+      - help
+          Shows this help text.
+          eg: '!events help'
 
-    case @api.create_dm(discord_msg.author.id) do
-      {:ok, channel} ->
-        @api.create_message(channel.id, String.trim("""
-        Available commands:
-        - help
-            Shows this help text.
-            eg: '!events help'
+      - soon
+          Shows events coming in the next 7 days.
+          This is the default when just using '!events' without a command.
+          eg: '!events soon'
+          eg: '!events'
 
-        - soon
-            Shows events coming in the next 7 days.
-            This is the default when just using '!events' without a command.
-            eg: '!events soon'
-            eg: '!events'
+      - me
+          Shows all events that you are registered for
+          eg: '!events me'
+      
+      - mine
+          Shows all events that you are managing
+          eg: '!events mine'
 
-        - me
-            Shows all events that you are registered for
-            eg: '!events me'
+      - add <name> <date>
+          Creates an event with the given name and date.
+          eg: '!events add "BG Super Tourney" 2019-08-22T17:00:00+00'
 
-        - add <name> <date>
-            Creates an event with the given name and date.
-            Will ask for more information.
-            Events will be automatically added to the calendar.
-            Only users with the ''Event Creator' role can create events.
-            eg: '!events "BG Super Tourney" "2019-08-22 17:00:00 PDT"'
+      - remove <name>
+          Deletes an event with the given name.
+          Only the creator or admin can delete an event.
+          eg: '!events remove "BG Super Tourney"'
 
-        - remove <name>
-            Deletes an event with the given name.
-            Only the creator or admin can delete an event.
-            eg: '!events delete "BG Super Tourney"'
+      - register <name> <@discordUser1> <@discordUser2> <...>
+          Registers the given discord users to the given event.
+          Registering a user will make them receive event reminders.
+          Use discords autocomplete/user selector to ensure the name is right.
+          eg: '!events register "BG Super Tourney" @PhysicsNoob#2664 @AsheN🌯#0002'
 
-        - register <name> <@discordUser1> <@discordUser2> <...>
-            Registers the given discord users to the given event.
-            Only creators and admins can do this.
-            Registering a user will make them receive event reminders.
-            Use discords autocomplete/user selector to ensure the name is right.
-            eg: '!events register "BG Super Tourney" @PhysicsNoob#2664 @AsheN🌯#0002'
-
-        - unregister <name> <@discordUser1> <@discordUser2> <...>
-            Unregisters the given discord users to the given event.
-            Creators and admins, can do this, and users can also unregister themselves.
-            Registering a user will make them receive event reminders.
-            Use discords autocomplete/user selector to ensure the name is right.
-            eg: '!events register "BG Super Tourney" @PhysicsNoob#2664 @AsheN🌯#0002'
-        """))
-      {:error, reason} ->
-        Logger.warn "Failed to create dm in help command: #{reason}"
+      - unregister <name> <@discordUser1> <@discordUser2> <...>
+          Unregisters the given discord users from the given event.
+          Use discords autocomplete/user selector to ensure the name is right.
+          eg: '!events unregister "BG Super Tourney" @PhysicsNoob#2664 @AsheN🌯#0002'
+      """))
     end
   end
 
@@ -122,26 +116,47 @@ defmodule Event do
   defp nil_to_string(nil), do: ""
   defp nil_to_string(str), do: str
 
-  defp me(discord_msg) do
-    Logger.info "Running unimplemented me command"
-    @api.create_message(discord_msg.channel_id, "WIP")
+  defp me(channel_id, author_id) do
+    with events when events != [] <- Event.Persister.get_all(nil, author_id, nil) do
+      events
+        |> Enum.map(fn e -> summarize_event(e) end)
+        |> (&(["All the events you've registered for:"] ++ &1)).()
+        |> Enum.join("\n")
+        |> (fn msg -> @api.create_message(channel_id, msg) end).()
+    else
+      [] ->
+        @api.create_message(channel_id, "Looks like you're not registered for any events")
+    end
   end
 
-  defp add(discord_msg, name, date_str) do
-    creator = Nostrum.Cache.UserCache.get!(discord_msg.author.id)
+  defp mine(channel_id, author_id) do
+    with events when events != [] <- Event.Persister.get_all(author_id, nil, nil) do
+      events
+        |> Enum.map(fn e -> summarize_event(e) end)
+        |> (&(["All the events you're managing:"] ++ &1)).()
+        |> Enum.join("\n")
+        |> (fn msg -> @api.create_message(channel_id, msg) end).()
+    else
+      [] ->
+        @api.create_message(channel_id, "Looks like you haven't created any events")
+    end
+  end
+
+  defp add(channel_id, author_id, name, date_str) do
+    creator = Nostrum.Cache.UserCache.get!(author_id)
     with {:ok, date, _} <- DateTime.from_iso8601(date_str) do
-      event = Event.Persister.create(%Event{name: name, date: date, creator: discord_msg.author.id})
-      @api.create_message(discord_msg.channel_id, """
+      event = Event.Persister.create(%Event{name: name, date: date, creator: author_id})
+      @api.create_message(channel_id, """
         Event Created!
           "#{event.name}" by #{creator} on #{DateTime.to_date(event.date)} at #{event.date.hour}:#{event.date.minute} (#{event.date.time_zone})
         """)
     else
       _ ->
-        @api.create_message(discord_msg.channel_id, "Illegal input date: #{date_str}. Compare it to '2021-01-19T16:30:00-08'")
+        @api.create_message(channel_id, "Illegal input date: #{date_str}. Compare it to '2021-01-19T16:30:00-08'")
     end
   end
 
-  defp remove(%Message{author: %User{id: author_id}, channel_id: channel_id, guild_id: guild_id}, name) do
+  defp remove(channel_id, author_id, guild_id, name) do
     with {:ok, %Event{name: name, creator: creator_id, date: date, participants: participants, link: link}} <- Event.Persister.get(name),
          guild <- Nostrum.Cache.GuildCache.get!(guild_id),
          true <- permission_remove(author_id, creator_id, guild),
@@ -225,8 +240,8 @@ defmodule Event do
     end
   end
 
-  def tryout(discord_msg, raw_mentor, raw_mentee) when is_binary(raw_mentor) and is_binary(raw_mentee) do
-    guild = Nostrum.Cache.GuildCache.get!(discord_msg.guild_id)
+  def tryout(channel_id, guild_id, raw_mentor, raw_mentee) when is_binary(raw_mentor) and is_binary(raw_mentee) do
+    guild = Nostrum.Cache.GuildCache.get!(guild_id)
     mentors = guild
       |> DiscordQuery.mentors()
       |> DiscordQuery.matching_users(raw_mentor)
@@ -237,7 +252,7 @@ defmodule Event do
       |> options_for_pairings()
       |> Enum.join("\n")
 
-    @api.create_message(discord_msg.channel_id, output)
+    @api.create_message(channel_id, output)
   end
 
   defp options_for_pairings([]), do: []
