@@ -157,18 +157,16 @@ defmodule Event do
   end
 
   defp remove(channel_id, author_id, guild_id, name) do
-    with {:ok, %Event{name: name, creator: creator_id, date: date, participants: participants, link: link}} <- Event.Persister.get(name),
+    with {:ok, %Event{name: name, creator: creator_id, date: date, participants: participant_ids, link: link}} <- Event.Persister.get(name),
          guild <- Nostrum.Cache.GuildCache.get!(guild_id),
          true <- permission_remove(author_id, creator_id, guild),
+         participants <- Enum.map(participant_ids, fn p -> Nostrum.Cache.UserCache.get!(p) end),
          :ok <- Event.Persister.remove(name)
     do
-      @api.create_message(channel_id, "Ok, I'll remove \"#{name}\" that was scheduled for #{date}.")
-      if length(participants) > 0 do
-        @api.create_message(channel_id, "Make sure to let the #{length(participants)} know!")
-      end
-      if link != nil do
-        @api.create_message(channel_id, "You might have to cleanup #{link} as well.")
-      end
+      msg = "Ok, I'll remove \"#{name}\" that was scheduled for #{date}."
+        |> add_line_if(length(participants) > 0, "FYI #{Enum.join(participants, ", ")}")
+        |> add_line_if(link != nil, "You might have to cleanup #{link} as well.")
+      @api.create_message(channel_id, msg)
     else
       {:ok, :none} ->
         @api.create_message(channel_id, "It doesn't look like that event exists. Are you sure you spelled it right?")
@@ -176,6 +174,10 @@ defmodule Event do
         @api.create_message(channel_id, reason)
     end
   end
+
+  defp add_line_if(lines, _, ""), do: lines
+  defp add_line_if(lines, true, str), do: lines <> "\n" <> str
+  defp add_line_if(lines, false, _), do: lines
 
   defp permission_remove(author_id, creator_id, guild) do
     %User{username: creator_name} = Nostrum.Cache.UserCache.get!(creator_id)
