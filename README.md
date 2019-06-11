@@ -8,17 +8,17 @@ A collection of bots and tools, as well as eventually a co-server for the websit
 ```bash
 > brew install elixir
 > brew install kerl
-> kerl build 22.0 22.0
-> kerl install 22.0 ~/kerl/22.0
+> kerl build 21.1 21.1
+> kerl install 21.1 ~/kerl/21.1
 > git clone ...
 ```
 
 ### Every Time
 ```bash
-> . ~/kerl/22.0/activate
+> . ~/kerl/21.1/activate
 # check - we should see Erlang/TOP 22. 21 causes a bug in the websockets library
 > elixir -v
-Erlang/OTP 22 [erts-10.4] [source] [64-bit] [smp:4:4] [ds:4:4:10] [async-threads:1] [hipe]
+Erlang/OTP 21 [erts-10.4] [source] [64-bit] [smp:4:4] [ds:4:4:10] [async-threads:1] [hipe]
 
 Elixir 1.8.2 (compiled with Erlang/OTP 21)
 

@@ -16,11 +16,34 @@ defmodule Event do
 
   @api Application.get_env(:born_gosu_gaming, :discord_api)
 
+  def ms_until!(%Event{date: date}) do
+    {:ok, now} = DateTime.now("Etc/UTC")
+    DateTime.diff(date, now, :millisecond)
+  end
+
+  def default_reminders() do
+    [
+      {7*24*60*60*1000, fn e -> remind_participants(e, "in 7 days") end},
+      {3*24*60*60*1000, fn e -> remind_participants(e, "in 3 days") end},
+      {1*24*60*60*1000, fn e -> remind_participants(e, "tomorrow") end},
+      {3*60*60*1000, fn e -> remind_participants(e, "in 3 hours") end},
+      {20*60*1000, fn e -> remind_participants(e, "20 minutes from now") end},
+    ]
+  end
+
   def run(command) do
     with {:ok, channel} <- Nostrum.Cache.ChannelCache.get(command.discord_msg.channel_id) do
       Logger.info "Running #{command.command}(#{Enum.join(command.args, ", ")}) from #{command.discord_msg.author.username}\##{command.discord_msg.author.discriminator} in #{channel.name}"
     end
     do_command(command.command, command.args, command.discord_msg)
+  end
+
+  defp remind_participants(event, date_str) do
+    Enum.each(event.participants, fn participant -> 
+      with {:ok, channel} <- @api.create_dm(participant) do
+        @api.create_message(channel.id, "This is a reminder that you are registered for an upcoming event that starts #{date_str}\n#{summarize_event(event)}")
+      end
+    end)
   end
 
   defp do_command("help", _, m), do: help(m.channel_id, m.author.id)
@@ -64,8 +87,10 @@ defmodule Event do
           eg: '!events mine'
 
       - add <name> <date> <optional_link>
-          Creates an event with the given name and date.
-          eg: '!events add "BG Super Tourney" 2019-08-22T17:00:00+00'
+          Creates an event with the given name and date and link.
+          Each creator can only have 1 event with the same name
+          eg: '!events add "BG Super Tourney" 2019-08-22T17:00:00+00' http://challonge.com/test
+          eg: '!events add VTL3 2021-08-22T17:00:00-07'
 
       - remove <name>
           Deletes an event with the given name.
@@ -144,21 +169,34 @@ defmodule Event do
   end
 
   defp add(channel_id, author_id, name, date_str, link) do
-    with {:ok, date, _} <- DateTime.from_iso8601(date_str) do
-      event = Event.Persister.create(%Event{name: name, date: date, creator: author_id, link: link})
-      @api.create_message(channel_id, "Excellent! I've created that event for you.\n" <> summarize_event(event))
+    with events <- Event.Persister.get_all(author_id, nil, nil),
+         false <- has_duplicate_event?(events, name),
+         {:ok, date, _} <- DateTime.from_iso8601(date_str),
+         {:ok, now} <- DateTime.now("Etc/UTC") do
+      if DateTime.diff(date, now) > 0 do
+        event = Event.Persister.create(%Event{name: name, date: date, creator: author_id, link: link})
+        @api.create_message(channel_id, "Excellent! I've created that event for you.\n" <> summarize_event(event))
+      else
+        @api.create_message(channel_id, "New events must be in the future")
+      end
     else
+      true ->
+        @api.create_message(channel_id, "Looks like you already have an event called '#{name}'")
       _ ->
         @api.create_message(channel_id, "Looks like that date is incorrect: '#{date_str}'. Compare it to '2021-01-19T16:30:00-08'")
     end
   end
 
+  defp has_duplicate_event?(events, name) do
+    length(Enum.filter(events, fn e -> e.name == name end)) > 0
+  end
+
   defp remove(channel_id, author_id, guild_id, name) do
-    with {:ok, %Event{name: name, creator: creator_id, date: date, participants: participant_ids, link: link}} <- Event.Persister.get(name),
+    with {:ok, event = %Event{name: name, creator: creator_id, date: date, participants: participant_ids, link: link}} <- Event.Persister.get(name),
          guild <- Nostrum.Cache.GuildCache.get!(guild_id),
          true <- permission_remove(author_id, creator_id, guild),
          participants <- Enum.map(participant_ids, fn p -> Nostrum.Cache.UserCache.get!(p) end),
-         :ok <- Event.Persister.remove(name)
+         :ok <- Event.Persister.remove(event)
     do
       msg = "Ok, I'll remove \"#{name}\" that was scheduled for #{date}."
         |> add_line_if(length(participants) > 0, "FYI #{Enum.join(participants, ", ")}")
@@ -189,7 +227,7 @@ defmodule Event do
     with {:ok, event} <- Event.Persister.get(name),
          {unregistered, registered} <- find_already_registered(users, event),
          user_ids <- Enum.uniq(Enum.map(unregistered, fn u -> u.id end) ++ event.participants),
-         :ok <- Event.Persister.register(name, user_ids),
+         :ok <- Event.Persister.register(event, user_ids),
          creator <- Nostrum.Cache.UserCache.get!(event.creator),
          %User{id: creator_id} = creator do
       if length(registered) > 0 do
@@ -224,7 +262,7 @@ defmodule Event do
          {unregistered, registered} <- find_already_registered(users, event),
          registered_ids <- Enum.map(registered, fn u -> u.id end),
          user_ids <- Enum.filter(event.participants, fn p -> p not in registered_ids end),
-         :ok <- Event.Persister.register(name, user_ids) do
+         :ok <- Event.Persister.register(event, user_ids) do
       if length(unregistered) > 0 do
         @api.create_message(channel_id, "#{Enum.join(Enum.map(unregistered, fn u -> u.username end), ", ")} not registered for this event.")
       end

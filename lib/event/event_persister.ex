@@ -38,7 +38,7 @@ defmodule Event.Persister do
   end
 
   def init(:ok) do
-    {:ok, event_table} = :dets.open_file(Application.get_env(:born_gosu_gaming, :event_db), [type: :set])
+    {:ok, event_table} = :dets.open_file(Application.get_env(:born_gosu_gaming, :event_db), [type: :set, auto_save: 5000])
     {:ok, participant_table} = :dets.open_file(Application.get_env(:born_gosu_gaming, :participant_db), [type: :bag])
     {:ok, {event_table, participant_table}}
   end
@@ -86,22 +86,23 @@ defmodule Event.Persister do
 
   def handle_call({:create, event}, _from, {event_table, participant_table}) do
     :ok = :dets.insert(event_table, {event.name, event})
+    :ok = Event.Reminder.schedule_reminders(event)
+    Logger.info("Created event '#{event.name}'")
     {:reply, event, {event_table, participant_table}}
   end
 
-  def handle_call({:remove, name}, _from, {event_table, participant_table}) do
-    result = :dets.delete(event_table, name)
+  def handle_call({:remove, event}, _from, {event_table, participant_table}) do
+    result = :dets.delete(event_table, event.name)
+    :ok = Event.Reminder.unschedule_reminders(event)
+    Logger.info("Removed event '#{event.name}'")
     {:reply, result, {event_table, participant_table}}
   end
 
-  def handle_call({:register, name, participant_ids}, _from, {event_table, participant_table}) do
-    with results when is_list(results) <- :dets.lookup(event_table, name),
-         event <- first_or_none(results) do
-      :ok = :dets.insert(event_table, {name, %{event | participants: participant_ids}})
-      {:reply, :ok, {event_table, participant_table}}
-    else
-      :none ->
-        {:reply, {:error, :event_not_exists}, {event_table, participant_table}}
-    end
+  def handle_call({:register, event, participant_ids}, _from, {event_table, participant_table}) do
+    updated_event = %{event | participants: participant_ids}
+    :ok = :dets.insert(event_table, {event.name, updated_event})
+    :ok = Event.Reminder.schedule_reminders(updated_event)
+    Logger.info("Registered #{length(participant_ids)} participants for '#{event.name}'")
+    {:reply, :ok, {event_table, participant_table}}
   end
 end

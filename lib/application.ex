@@ -5,10 +5,11 @@ defmodule Main do
     children = if Mix.env != :test do
       [
         {Command.DiscordConsumer, name: Command.DiscordConsumer},
-        {Event.Persister, name: Event.Persister}
+        {Event.Persister, name: Event.Persister},
+        %{id: Event.Reminder.Server, start: {Event.Reminder.Server, :start_link, [Event.default_reminders()]}},
       ]
     else
-      # We don't startup the Nostrum application or the consumer, but we still need the cache
+      # We don't startup the Nostrum application or the consumer or reminder service, but we still need the cache
       # Normally the app starts up the cache, so we do that here instead
       # Note that the cache will still be empty - tests need to populate it
       Nostrum.Application.setup_ets_tables()

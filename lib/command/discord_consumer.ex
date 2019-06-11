@@ -1,5 +1,6 @@
 defmodule Command.DiscordConsumer do
   use Nostrum.Consumer
+  require Logger
 
   def start_link do
     Consumer.start_link(__MODULE__)
@@ -21,6 +22,10 @@ defmodule Command.DiscordConsumer do
   @spec list_to_command([String.t()], Nostrum.Struct.Message.t()) :: %Command{}
   def list_to_command([command | args], discord_msg) do
     %Command{discord_msg: discord_msg, command: command, args: args}
+  end
+
+  def handle_event({:READY, _, _}) do
+    Logger.info("Confirmed a websocket connection")
   end
 
   def handle_event({:MESSAGE_CREATE, {msg}, _}) do

@@ -13,6 +13,12 @@ defmodule DiscordQuery do
       |> elem(1)
   end
 
+  def channel_by_name(channel_name, %Guild{channels: channels}) do
+    channels
+      |> Enum.find(fn {_id, c} -> c.name == channel_name end)
+      |> elem(1)
+  end
+
   def users_with_role(role, guild) when is_binary(role) do
     role
       |> role_by_name(guild)
