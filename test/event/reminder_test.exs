@@ -22,7 +22,7 @@ defmodule Event.ReminderTest do
       send me, :passed
       []  
     end
-    {:ok, _} = Event.Reminder.Server.start_link([], get_all)  
+    {:ok, _} = Event.Reminder.start_link([], get_all)  
     assert_receive :passed
   end
 
@@ -33,7 +33,7 @@ defmodule Event.ReminderTest do
       {1, fn _ -> send me, :reminder2 end},
     ]
     get_all = fn () -> [] end
-    {:ok, _} = Event.Reminder.Server.start_link(intervals, get_all)
+    {:ok, _} = Event.Reminder.start_link(intervals, get_all)
 
     refute_receive :reminder1
     refute_receive :reminder2
@@ -46,7 +46,7 @@ defmodule Event.ReminderTest do
       {1, fn _ -> send me, :reminder2 end},
     ]
     get_all = fn () -> fake_get_all(3, 5) end
-    {:ok, _} = Event.Reminder.Server.start_link(intervals, get_all)
+    {:ok, _} = Event.Reminder.start_link(intervals, get_all)
 
     assert %{
       "event1::123" => 2,
@@ -71,7 +71,7 @@ defmodule Event.ReminderTest do
     ]
     get_all = fn () -> fake_get_all(1, 1300) end
 
-    {:ok, _} = Event.Reminder.Server.start_link(intervals, get_all)
+    {:ok, _} = Event.Reminder.start_link(intervals, get_all)
     start = now()
 
     assert %{
@@ -104,7 +104,7 @@ defmodule Event.ReminderTest do
       {1, fn _ -> send me, :reminder2 end},
     ]
     get_all = fn () -> fake_get_all(0, 5) end
-    {:ok, _} = Event.Reminder.Server.start_link(intervals, get_all)
+    {:ok, _} = Event.Reminder.start_link(intervals, get_all)
 
     assert %{} = Event.Reminder.reminders_per_event()
 
@@ -125,7 +125,7 @@ defmodule Event.ReminderTest do
       {15, fn e -> send me, "#{e.name}-15" end},
     ]
     get_all = fn () -> fake_get_all(1, 200) end
-    {:ok, _} = Event.Reminder.Server.start_link(intervals, get_all)
+    {:ok, _} = Event.Reminder.start_link(intervals, get_all)
 
     assert %{
       "event1::123" => 2,
@@ -166,7 +166,7 @@ defmodule Event.ReminderTest do
       {2, fn e -> send me, "#{e.name}-2" end},
     ]
     get_all = fn () -> fake_get_all(3, 100) end
-    {:ok, _} = Event.Reminder.Server.start_link(intervals, get_all)
+    {:ok, _} = Event.Reminder.start_link(intervals, get_all)
 
     assert %{
       "event1::123" => 2,
@@ -206,7 +206,7 @@ defmodule Event.ReminderTest do
       {30, fn _ -> send me, :reminder30 end},
     ]
     get_all = fn () -> fake_get_all(1, 18) end
-    {:ok, _} = Event.Reminder.Server.start_link(intervals, get_all)
+    {:ok, _} = Event.Reminder.start_link(intervals, get_all)
 
     assert %{
       "event1::123" => 3,

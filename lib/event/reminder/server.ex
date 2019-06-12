@@ -2,10 +2,6 @@ defmodule Event.Reminder.Server do
   use GenServer
   require Logger
 
-  def start_link(intervals, get_all \\ &Event.Persister.get_all/0, alert_delta \\ 50) do
-    GenServer.start_link(Event.Reminder.Server, {intervals, get_all, alert_delta}, [name: Reminder.Server])
-  end
-
   def init({intervals, get_all_events, alert_delta}) do
     Logger.info("Starting reminder process")
     events = get_all_events.()

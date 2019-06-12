@@ -6,7 +6,7 @@ defmodule Main do
       [
         {Command.DiscordConsumer, name: Command.DiscordConsumer},
         {Event.Persister, name: Event.Persister},
-        %{id: Event.Reminder.Server, start: {Event.Reminder.Server, :start_link, [Event.default_reminders()]}},
+        %{id: Event.Reminder.Server, start: {Event.Reminder, :start_link, [Event.default_reminders()]}},
       ]
     else
       # We don't startup the Nostrum application or the consumer or reminder service, but we still need the cache
