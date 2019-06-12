@@ -16,7 +16,8 @@ defmodule Event.Persister do
     filters = [
       date_filter(within_seconds),
       author_filter(author_id),
-      participant_filter(participant_id)
+      participant_filter(participant_id),
+      future_filter(0),
     ]
     GenServer.call(Event.Persister, {:get_all, filters})
   end
@@ -60,6 +61,12 @@ defmodule Event.Persister do
   defp date_filter(within_seconds) when within_seconds > 0 do
     {:ok, now} = DateTime.now("Etc/UTC")
     fn event -> DateTime.diff(event.date, now) <= within_seconds end
+  end
+
+  defp future_filter(nil), do: fn _ -> true end
+  defp future_filter(seconds_from_now) when seconds_from_now >= 0 do
+    {:ok, now} = DateTime.now("Etc/UTC")
+    fn event -> DateTime.diff(event.date, now) > seconds_from_now end
   end
 
   defp author_filter(nil), do: fn _ -> true end
