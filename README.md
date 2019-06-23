@@ -7,7 +7,6 @@ A collection of bots and tools, as well as eventually a co-server for the websit
 ### First Time
 ```bash
 > ./scripts/provision.sh
-> git clone ...
 ```
 
 ### Running Locally

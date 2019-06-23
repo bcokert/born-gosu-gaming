@@ -1,5 +1,16 @@
 use Mix.Config
 
+config :logger,
+    backends: [{LoggerFileBackend, :debug_log}, {LoggerFileBackend, :info_log}, :console]
+
+config :logger, :console,
+    level: :debug
+
+config :logger, :debug_log,
+    path: "log/info.log",
+    level: :debug,
+    rotate: %{max_bytes: 1024*1024*1024*20, keep: 5 }
+
 config :nostrum,
   token: "secret",
   num_shards: :auto
