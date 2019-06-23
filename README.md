@@ -30,8 +30,11 @@ To work:
 
 To cleanup:
 ```bash
-> rm -rf config/secret/*.exs
+> rm -rf config/secret/prod/*.exs
+> rm -rf config/secret/test/*.exs
 ```
+
+The main secrets are discord tokens, which can be created from ![here](https://discordapi.com/permissions.html#268667968), using the application for born gosu.
 
 ## Deploying
 

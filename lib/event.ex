@@ -32,10 +32,17 @@ defmodule Event do
   end
 
   def run(command) do
-    with {:ok, channel} <- Nostrum.Cache.ChannelCache.get(command.discord_msg.channel_id) do
-      Logger.info "Running #{command.command}(#{Enum.join(command.args, ", ")}) from #{command.discord_msg.author.username}\##{command.discord_msg.author.discriminator} in #{channel.name}"
+    test_mode_role = Application.get_env(:born_gosu_gaming, :test_mode_role)
+    with {:ok, channel} <- Nostrum.Cache.ChannelCache.get(command.discord_msg.channel_id),
+         guild <- Nostrum.Cache.GuildCache.get!(command.discord_msg.guild_id) do
+      Logger.info "Attempting #{command.command}(#{Enum.join(command.args, ", ")}) from #{command.discord_msg.author.username}\##{command.discord_msg.author.discriminator} in #{channel.name}"
+      if is_authorized(command.discord_msg.author.id, guild) do
+        do_command(command.command, command.args, command.discord_msg)
+      else
+        @api.create_message(channel.id, "I'm sorry, but test mode is on, so only Admins and #{test_mode_role} can use this.")
+        Logger.info "#{command.command}(#{Enum.join(command.args, ", ")}) from #{command.discord_msg.author.username}\##{command.discord_msg.author.discriminator} in #{channel.name} was unauthorized"
+      end
     end
-    do_command(command.command, command.args, command.discord_msg)
   end
 
   defp remind_participants(event, date_str) do
@@ -60,7 +67,7 @@ defmodule Event do
 
   defp unknown(channel_id, name, args, username, discriminator) do
     cmd = "#{name}(#{Enum.join(args, ", ")}) from #{username}\##{discriminator}"
-    @api.create_message(channel_id, "Unknown command or args: #{cmd}")
+    @api.create_message(channel_id, "Apologies, but I'm not sure what to do with this: #{cmd}")
   end
 
   defp help(channel_id, author_id) do
@@ -89,7 +96,7 @@ defmodule Event do
       - add <name> <date> <optional_link>
           Creates an event with the given name and date and link.
           Each creator can only have 1 event with the same name
-          eg: '!events add "BG Super Tourney" 2019-08-22T17:00:00+00' http://challonge.com/test
+          eg: '!events add "BG Super Tourney" 2019-08-22T17:00:00+00' 'http://challonge.com/test'
           eg: '!events add VTL3 2021-08-22T17:00:00-07'
 
       - remove <name>
@@ -221,6 +228,12 @@ defmodule Event do
     else
       {false, "Only the creator (#{creator_name}) or an admin can remove events"}
     end
+  end
+
+  defp is_authorized(author_id, guild) do
+    is_test_mode = Application.get_env(:born_gosu_gaming, :is_test_mode)
+    test_mode_role = Application.get_env(:born_gosu_gaming, :test_mode_role)
+    !is_test_mode or DiscordQuery.user_has_role?(author_id, test_mode_role, guild) or DiscordQuery.user_has_role?(author_id, "Admins", guild)
   end
 
   defp register(channel_id, author_id, name, users) do

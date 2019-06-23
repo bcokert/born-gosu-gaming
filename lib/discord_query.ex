@@ -9,7 +9,7 @@ defmodule DiscordQuery do
   
   def role_by_name(role_name, %Guild{roles: roles}) do
     roles
-      |> Enum.find(fn {_id, r} -> r.name == role_name end)
+      |> Enum.find({:none, :none}, fn {_id, r} -> r.name == role_name end)
       |> elem(1)
   end
 

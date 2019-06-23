@@ -37,8 +37,12 @@ defmodule DiscordQueryTest do
     [guild: basic_guild()]
   end
 
-  test "role_by_name", context do
+  test "role_by_name with valid role", context do
     assert %Role{id: 11, name: "role1"} = DiscordQuery.role_by_name("role1", context[:guild])
+  end
+
+  test "role_by_name with missing role", context do
+    assert :none = DiscordQuery.role_by_name("role19198235", context[:guild])
   end
 
   test "users_with_role as id", context do

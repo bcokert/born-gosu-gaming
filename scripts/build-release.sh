@@ -20,4 +20,4 @@ MIX_ENV=prod mix release
 
 cp -r _build/prod/rel/born_gosu_gaming ${RELEASE_DIR}
 
-${RELEASE_DIR}/bin/born_gosu_gaming start
+MIX_ENV=prod ${RELEASE_DIR}/bin/born_gosu_gaming start
