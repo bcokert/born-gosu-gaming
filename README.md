@@ -6,23 +6,8 @@ A collection of bots and tools, as well as eventually a co-server for the websit
 
 ### First Time
 ```bash
-> brew install elixir
-> brew install kerl
-> kerl build 21.1 21.1
-> kerl install 21.1 ~/kerl/21.1
+> ./scripts/provision.sh
 > git clone ...
-```
-
-### Every Time
-```bash
-> . ~/kerl/21.1/activate
-# check - we should see Erlang/TOP 22. 21 causes a bug in the websockets library
-> elixir -v
-Erlang/OTP 21 [erts-10.4] [source] [64-bit] [smp:4:4] [ds:4:4:10] [async-threads:1] [hipe]
-
-Elixir 1.8.2 (compiled with Erlang/OTP 21)
-
-> mix deps.get
 ```
 
 ### Running Locally
@@ -41,7 +26,7 @@ Elixir 1.8.2 (compiled with Erlang/OTP 21)
 
 To work:
 ```bash
-> gpg --decrypt-files config/secret/*.gpg
+> ./scripts/decrypt-secrets.sh
 ```
 
 To cleanup:
@@ -51,4 +36,18 @@ To cleanup:
 
 ## Deploying
 
-TBD
+### First time per server
+
+Run this once per server, plus once every time you change the provision scripts
+
+```bash
+> ./scripts/deploy-source.sh mynewserver.com
+> ssh root@mynewserver.com "/tmp/born-gosu-gaming/build/scripts/provision.sh"
+```
+
+### Deploying code to a provisioned server
+
+```bash
+> ./scripts/deploy-source.sh mynewserver.com
+> ssh root@mynewserver.com "/tmp/born-gosu-gaming/build/scripts/build-release.sh"
+```
