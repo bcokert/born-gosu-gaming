@@ -27,6 +27,8 @@ else
     apt-get -y install m4
     apt-get -y install libncurses5-dev
     apt-get -y install libssh-dev
+    apt-get -y install curl
+    apt-get -y install libssl-dev
 
     # Elixir Deps
     apt-get install unzip
