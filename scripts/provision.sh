@@ -42,3 +42,5 @@ asdf global erlang 21.1
 
 asdf install elixir 1.8.2
 asdf global elixir 1.8.2
+
+mkdir -p /var/born-gosu-gaming/db
