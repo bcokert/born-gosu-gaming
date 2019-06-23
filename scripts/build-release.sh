@@ -18,6 +18,7 @@ mix deps.get
 
 MIX_ENV=prod mix release
 
+rm -rf ${RELEASE_DIR}
 cp -r _build/prod/rel/born_gosu_gaming ${RELEASE_DIR}
 
 MIX_ENV=prod ${RELEASE_DIR}/bin/born_gosu_gaming start
