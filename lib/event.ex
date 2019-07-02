@@ -82,6 +82,7 @@ defmodule Event do
   end
 
   defp do_command("help", _, m), do: help(m.channel_id, m.author.id)
+  defp do_command("dates", _, m), do: dates(m.channel_id)
   defp do_command("soon", _, m), do: soon(m.channel_id)
   defp do_command("me", _, m), do: me(m.channel_id, m.author.id)
   defp do_command("mine", _, m), do: mine(m.channel_id, m.author.id)
@@ -107,6 +108,9 @@ defmodule Event do
           Shows this help text.
           eg: '!events help'
 
+      - dates
+          Shows some help specific to dates and date formats
+
       - soon
           Shows events coming in the next 7 days.
           This is the default when just using '!events' without a command.
@@ -127,6 +131,9 @@ defmodule Event do
           eg: '!events add "BG Super Tourney" 2019-08-22T17:00:00+00' 'http://challonge.com/test'
           eg: '!events add VTL3 2021-08-22T17:00:00-07'
 
+          The -07 and whatnot at the end are the offsets from UTC
+          Find them all at https://www.timeanddate.com/time/zones/
+
       - remove <name>
           Deletes an event with the given name.
           Only the creator or admin can delete an event.
@@ -145,6 +152,35 @@ defmodule Event do
           eg: '!events unregister "BG Super Tourney" @PhysicsNoob#2664 @AsheN🌯#0002'
       """))
     end
+  end
+
+  defp dates(channel_id) do
+    @api.create_message(channel_id, """
+    Consider these dates:
+      `2019-07-01T16:30:00-07`
+      `2019-07-01T16:30:00+03`
+
+    The `-07` is the date offset from UTC. `-07` Might be PDT, `+03` might be EEST.
+
+    Here's some common offsets
+    ```
+      Normal:                  Daylight Savings:
+                    -NA-
+      PDT:   -07               PST:  -08
+      CDT:   -05               CST:  -06
+      EDT:   -04               EST:  -05
+                    -EU-
+      UTC:   +00               BST:  +01
+      WET:   +00               WEST: +01
+      CET:   +01               CEST: +02
+      EET:   +02               EEST: +03
+                    -AS-
+      China: +08
+      Korea: +09
+    ```
+
+    Here's a list of all the possible offsets and their names, including daylight savings: https://www.timeanddate.com/time/zones/
+    """)
   end
 
   defp soon(channel_id) do
@@ -168,7 +204,7 @@ defmodule Event do
 
     has_players? = length(participant_names) > 0
     [
-      "__**#{name}**__ by **#{creator_name}** _on #{DateTime.to_date(date)} at #{date.hour}:#{date.minute} (#{date.time_zone})_",
+      "__**#{name}**__ by **#{creator_name}** _on #{DateTime.to_date(date)} at #{date.hour}:#{date.minute} (UTC)_",
       "#{pretty_time_until(date)} from now",
       "#{nil_to_string(link)}",
       (if has_players?, do: "Players (#{length(participant_names)}): #{Enum.join(participant_names, ", ")}\n", else: " ")
@@ -235,6 +271,8 @@ defmodule Event do
                "2021-01-19T16:30:00-08     <<< Jan 1, 2021 at 4:30 pm UTC-08 (eg: PST)",
                "2019-12-03T02:15:00+01     <<< Dec 3, 2019 at 2:15 am UTC+01 (eg: BST)",
                "```",
+               "The -08 and whatnot at the end are the offsets from UTC",
+               "Find yours at `https://www.timeanddate.com/time/zones/`",
                "After creating an event, it will display the time until the event, so you can check your time, and recreate it if necessary."
                ], "\n")
         @api.create_message(channel_id, msg)
