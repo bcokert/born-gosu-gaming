@@ -2,6 +2,10 @@ defmodule Event do
   @enforce_keys [:name, :date, :creator]
   defstruct [:name, :date, :creator, :description, :link, participants: []]
 
+  @day 1000*60*60*24
+  @hour 1000*60*60
+  @minute 1000*60
+
   @type t :: %Event{
     name: String.t(),
     date: DateTime.t(),
@@ -19,6 +23,29 @@ defmodule Event do
   def ms_until!(%Event{date: date}) do
     {:ok, now} = DateTime.now("Etc/UTC")
     DateTime.diff(date, now, :millisecond)
+  end
+
+  def ms_until!(date) do
+    {:ok, now} = DateTime.now("Etc/UTC")
+    DateTime.diff(date, now, :millisecond)
+  end
+
+  defp time_until!(date) do
+    ms_total = ms_until!(date)
+    days = div(ms_total, @day)
+    hours = div(rem(ms_total, @day), @hour)
+    mins = div(rem(ms_total, @hour), @minute)
+    {days, hours, mins}
+  end
+
+  defp pretty_time_until({days, hours, minutes}) do
+    [{days > 0, "#{days} days"}, {hours > 0, "#{hours} hours"}, {minutes > 0, "#{minutes} minutes"}]
+      |> Enum.filter(fn {keep, val} -> keep end)
+      |> Enum.map(fn {_, val} -> val end)
+      |> Enum.join(", ")
+  end
+  defp pretty_time_until(date) do
+    pretty_time_until(time_until!(date))
   end
 
   def default_reminders() do
@@ -138,9 +165,9 @@ defmodule Event do
     participant_names = participant_ids
       |> Enum.map(fn p -> Nostrum.Cache.UserCache.get!(p) end)
       |> Enum.map(fn u -> u.username end)
-
     [
       "__**#{name}**__ by **#{creator_name}** _on #{DateTime.to_date(date)} at #{date.hour}:#{date.minute} (#{date.time_zone})_",
+      "#{pretty_time_until(date)} from now",
       "#{nil_to_string(link)}",
       "Players (#{length(participant_names)}): #{Enum.join(participant_names, ", ")}\n"
     ]
