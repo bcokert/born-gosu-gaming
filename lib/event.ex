@@ -27,7 +27,8 @@ defmodule Event do
       {3*24*60*60*1000, fn e -> remind_participants(e, "in 3 days") end},
       {1*24*60*60*1000, fn e -> remind_participants(e, "tomorrow") end},
       {3*60*60*1000, fn e -> remind_participants(e, "in 3 hours") end},
-      {20*60*1000, fn e -> remind_participants(e, "20 minutes from now") end},
+      {30*60*1000, fn e -> remind_participants(e, "30 minutes from now") end},
+      {60*1000, fn e -> remind_participants(e, "in 1 minute!") end},
     ]
   end
 
@@ -107,6 +108,7 @@ defmodule Event do
       - register <name> <@discordUser1> <@discordUser2> <...>
           Registers the given discord users to the given event.
           Registering a user will make them receive event reminders.
+          Reminders are sent 7 days, 3 days, 1 day, 3 hrs, and 30 mins, and 1 min before the event.
           Use discords autocomplete/user selector to ensure the name is right.
           eg: '!events register "BG Super Tourney" @PhysicsNoob#2664 @AsheN🌯#0002'
 
@@ -249,11 +251,9 @@ defmodule Event do
       if length(unregistered) > 0 do
         @api.create_message(channel_id, "Alright I've registered #{Enum.join(Enum.map(unregistered, fn u -> u.username end), ", ")} for \"#{name}\"")
         if author_id == creator_id do
-          @api.create_message(channel_id, "You take care of telling them about the event and keeping up with them.")
-          @api.create_message(channel_id, "I'll make sure they get reminders about when the event is happening.")
+          @api.create_message(channel_id, "You take care of telling them about the event and keeping up with them.\nI'll make sure they get reminders about when the event is happening. Reminders are sent 7 days, 3 days, 1 day, 3 hrs, and 30 mins, and 1 min before the event.")
         else
-          @api.create_message(channel_id, "Pinging #{creator} so they can follow up.")
-          @api.create_message(channel_id, "I'll make sure the participants get reminders about when the event is happening.")
+          @api.create_message(channel_id, "Pinging #{creator} so they can follow up.\nI'll make sure the participants get reminders about when the event is happening. Reminders are sent 7 days, 3 days, 1 day, 3 hrs, and 30 mins, and 1 min before the event.")
         end
       end
     else

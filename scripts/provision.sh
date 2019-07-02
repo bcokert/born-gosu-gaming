@@ -2,7 +2,7 @@
 # Run this on a server to provision it, after running scripts/deploy-source
 # This only needs to be done once in a while per server
 
-ROOT_DIR="/tmp/born-gosu-gaming"
+ROOT_DIR="/var/born-gosu-gaming"
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     brew install git
@@ -45,4 +45,8 @@ asdf global erlang 21.1
 asdf install elixir 1.8.2
 asdf global elixir 1.8.2
 
-mkdir -p /var/born-gosu-gaming/db
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    mkdir -p db
+else
+    mkdir -p ${ROOT_DIR}/db
+fi
