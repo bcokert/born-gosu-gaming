@@ -40,7 +40,7 @@ defmodule Event do
 
   defp pretty_time_until({days, hours, minutes}) do
     [{days > 0, "#{days} days"}, {hours > 0, "#{hours} hours"}, {minutes > 0, "#{minutes} minutes"}]
-      |> Enum.filter(fn {keep, val} -> keep end)
+      |> Enum.filter(fn {keep, _} -> keep end)
       |> Enum.map(fn {_, val} -> val end)
       |> Enum.join(", ")
   end
@@ -165,11 +165,13 @@ defmodule Event do
     participant_names = participant_ids
       |> Enum.map(fn p -> Nostrum.Cache.UserCache.get!(p) end)
       |> Enum.map(fn u -> u.username end)
+
+    has_players? = length(participant_names) > 0
     [
       "__**#{name}**__ by **#{creator_name}** _on #{DateTime.to_date(date)} at #{date.hour}:#{date.minute} (#{date.time_zone})_",
       "#{pretty_time_until(date)} from now",
       "#{nil_to_string(link)}",
-      "Players (#{length(participant_names)}): #{Enum.join(participant_names, ", ")}\n"
+      (if has_players?, do: "Players (#{length(participant_names)}): #{Enum.join(participant_names, ", ")}\n", else: " ")
     ]
       |> Enum.filter(fn s -> String.length(s) > 0 end)
       |> Enum.join("\n")
@@ -211,15 +213,31 @@ defmodule Event do
          {:ok, now} <- DateTime.now("Etc/UTC") do
       if DateTime.diff(date, now) > 0 do
         event = Event.Persister.create(%Event{name: name, date: date, creator: author_id, link: link})
-        @api.create_message(channel_id, "Excellent! I've created that event for you.\n" <> summarize_event(event))
+        msg = Enum.join([
+          "Excellent! I've created that event for you.",
+          summarize_event(event),
+          "If you made a mistake, type `!events remove #{name}` and try again",
+          "To add players, type `!events register #{name} @player1 @player2 ...`",
+        ], "\n")
+        @api.create_message(channel_id, msg)
       else
-        @api.create_message(channel_id, "New events must be in the future")
+        {neg_days, neg_hours, neg_minutes} = time_until!(date)
+        pretty = pretty_time_until({neg_days*-1, neg_hours*-1, neg_minutes*-1})
+        @api.create_message(channel_id, "New events must be in the future. Yours was #{pretty} in the past")
       end
     else
       true ->
         @api.create_message(channel_id, "Looks like you already have an event called '#{name}'")
       _ ->
-        @api.create_message(channel_id, "Looks like that date is incorrect: '#{date_str}'. Compare it to '2021-01-19T16:30:00-08'")
+        msg = Enum.join(["Looks like that date is incorrect. Try comparing it to the examples:",
+               "```",
+               "#{date_str}     <<< yours",
+               "2021-01-19T16:30:00-08     <<< Jan 1, 2021 at 4:30 pm UTC-08 (eg: PST)",
+               "2019-12-03T02:15:00+01     <<< Dec 3, 2019 at 2:15 am UTC+01 (eg: BST)",
+               "```",
+               "After creating an event, it will display the time until the event, so you can check your time, and recreate it if necessary."
+               ], "\n")
+        @api.create_message(channel_id, msg)
     end
   end
 

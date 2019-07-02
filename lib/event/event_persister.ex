@@ -87,7 +87,8 @@ defmodule Event.Persister do
 
   def handle_call({:get_all, filters}, _from, {event_table, participant_table}) do
     with results when is_list(results) <- :dets.traverse(event_table, filter_by(filters)) do
-      {:reply, results, {event_table, participant_table}}
+      sorted = Enum.sort(results, fn (%Event{date: d1}, %Event{date: d2}) -> DateTime.compare(d1, d2) != :gt end)
+      {:reply, sorted, {event_table, participant_table}}
     end
   end
 
