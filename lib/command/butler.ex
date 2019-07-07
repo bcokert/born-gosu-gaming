@@ -73,7 +73,7 @@ defmodule Command.Butler do
           |> Enum.random()
           |> make_reply()
       str =~ "send huskies" ->
-        [
+        imgs = [
           "https://cdn.discordapp.com/attachments/141568367357198338/581619661674643469/image0.jpg",
           "https://cdn.discordapp.com/attachments/141568367357198338/581619713940127745/image0.jpg",
           "https://cdn.discordapp.com/attachments/141568367357198338/581619736157224970/image0.jpg",
@@ -81,8 +81,18 @@ defmodule Command.Butler do
           "https://cdn.discordapp.com/attachments/141568367357198338/581619774359076866/image0.jpg",
           "https://cdn.discordapp.com/attachments/141568367357198338/581619842650603530/image0.jpg",
           "https://cdn.discordapp.com/attachments/141568367357198338/581619954697240768/image0.jpg",
-        ]
+          "https://cdn.discordapp.com/attachments/414068705991852043/597489035593777173/h1.jpg",
+          "https://cdn.discordapp.com/attachments/414068705991852043/597489044792016916/h2.jpg",
+          "https://cdn.discordapp.com/attachments/414068705991852043/597489049900679168/h3.jpg",
+          "https://cdn.discordapp.com/attachments/414068705991852043/597489048176558111/h4.jpg",
+          "https://cdn.discordapp.com/attachments/414068705991852043/597489052110815262/h5.jpg",
+          "https://cdn.discordapp.com/attachments/414068705991852043/597489058448408577/h6.jpg",
+          "https://cdn.discordapp.com/attachments/414068705991852043/597489059501309967/h7.jpg",
+        ] |> Enum.zip(1..1000)
+
+        imgs
           |> Enum.random()
+          |> (fn {v, i} -> "#{v} (#{i}/#{length(imgs)})" end).()
           |> make_reply()
       str =~ "send doggos" ->
         [
