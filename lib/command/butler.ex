@@ -95,16 +95,21 @@ defmodule Command.Butler do
           |> (fn {v, i} -> "#{v} (#{i}/#{length(imgs)})" end).()
           |> make_reply()
       str =~ "send doggos" ->
-        [
+        imgs = [
           "https://cdn.discordapp.com/attachments/141568367357198338/581619765030944778/image0.jpg",
           "https://cdn.discordapp.com/attachments/141568367357198338/581629993172467743/20190409_094042.jpg",
           "https://cdn.discordapp.com/attachments/141568367357198338/581667033888981009/video.mov",
           "https://cdn.discordapp.com/attachments/141568367357198338/581684457224798218/waylan.jpg",
           "https://cdn.discordapp.com/attachments/141568367357198338/581699852279480331/IMG_1590.PNG",
           "https://cdn.discordapp.com/attachments/141568367357198338/581944019660046336/IMG_20190525_163716.jpg",
-        ]
-          |> Enum.random()
-          |> make_reply()
+          "https://cdn.discordapp.com/attachments/557221533899030558/562613921215807498/image0.jpg",
+          "https://cdn.discordapp.com/attachments/557221533899030558/562614051440689152/image0.jpg",
+        ] |> Enum.zip(1..1000)
+
+          imgs
+            |> Enum.random()
+            |> (fn {v, i} -> "#{v} (#{i}/#{length(imgs)})" end).()
+            |> make_reply()
       str =~ "good job" ->
         [
           "It was my pleasure #{discord_msg.author}",
