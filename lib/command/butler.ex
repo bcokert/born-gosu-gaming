@@ -34,6 +34,14 @@ defmodule Command.Butler do
         ]
           |> Enum.random()
           |> make_reply()
+      str =~ "batman" ->
+        [
+          "Batman? Never heard such a word.",
+          "I simply have no idea who you're referring to #{discord_msg.author}.",
+          "What a strange name. Batman. Seems like a figment of your imagination.",
+        ]
+          |> Enum.random()
+          |> make_reply()
       str =~ "thanks" or str =~ "thank you" ->
         [
           "You are welcome #{discord_msg.author}",
