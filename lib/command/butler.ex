@@ -104,6 +104,8 @@ defmodule Command.Butler do
           "https://cdn.discordapp.com/attachments/141568367357198338/581944019660046336/IMG_20190525_163716.jpg",
           "https://cdn.discordapp.com/attachments/557221533899030558/562613921215807498/image0.jpg",
           "https://cdn.discordapp.com/attachments/557221533899030558/562614051440689152/image0.jpg",
+          "https://cdn.discordapp.com/attachments/96709636282908672/597511286062055434/image0.jpg",
+          "https://cdn.discordapp.com/attachments/557221533899030558/584913722418659330/video.mov",
         ] |> Enum.zip(1..1000)
 
           imgs
