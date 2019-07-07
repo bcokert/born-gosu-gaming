@@ -19,7 +19,8 @@ config :born_gosu_gaming,
   discord_api: Nostrum.Api,
   event_db: :"db/event",
   participant_db: :"db/participant",
-  test_mode_role: "bg-events-tester"
+  test_mode_role: "bg-events-tester",
+  creator_role: "Born Gosu"
 
 if Mix.env == :prod do
   config :born_gosu_gaming,

@@ -67,7 +67,7 @@ defmodule Event do
       if is_authorized(command.discord_msg.author.id, guild) do
         do_command(command.command, command.args, command.discord_msg)
       else
-        @api.create_message(channel.id, "I'm sorry, but test mode is on, so only Admins and #{test_mode_role} can use this.")
+        @api.create_message(channel.id, "I'm sorry, but only members can use this.")
         Logger.info "#{command.command}(#{Enum.join(command.args, ", ")}) from #{command.discord_msg.author.username}\##{command.discord_msg.author.discriminator} in #{channel.name} was unauthorized"
       end
     end
@@ -318,7 +318,16 @@ defmodule Event do
   defp is_authorized(author_id, guild) do
     is_test_mode = Application.get_env(:born_gosu_gaming, :is_test_mode)
     test_mode_role = Application.get_env(:born_gosu_gaming, :test_mode_role)
-    !is_test_mode or DiscordQuery.user_has_role?(author_id, test_mode_role, guild) or DiscordQuery.user_has_role?(author_id, "Admins", guild)
+    creator_role = Application.get_env(:born_gosu_gaming, :creator_role)
+
+    is_creator = DiscordQuery.user_has_role?(author_id, creator_role, guild)
+    is_tester = DiscordQuery.user_has_role?(author_id, test_mode_role, guild)
+    is_admin = DiscordQuery.user_has_role?(author_id, "Admins", guild)
+    if is_test_mode do
+      is_tester or is_admin
+    else
+      is_creator or is_admin
+    end
   end
 
   defp register(channel_id, author_id, name, users) do
