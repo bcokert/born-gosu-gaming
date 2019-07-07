@@ -25,7 +25,7 @@ if Mix.env == :prod do
   config :born_gosu_gaming,
     event_db: :"/var/born-gosu-gaming/db/event",
     participant_db: :"/var/born-gosu-gaming/db/participant",
-    is_test_mode: true
+    is_test_mode: false
   
   import_config("./secret/prod/nostrum.exs")
 else
