@@ -60,7 +60,6 @@ defmodule Event do
   end
 
   def run(command) do
-    test_mode_role = Application.get_env(:born_gosu_gaming, :test_mode_role)
     with {:ok, channel} <- Nostrum.Cache.ChannelCache.get(command.discord_msg.channel_id),
          guild <- Nostrum.Cache.GuildCache.get!(command.discord_msg.guild_id) do
       Logger.info "Attempting #{command.command}(#{Enum.join(command.args, ", ")}) from #{command.discord_msg.author.username}\##{command.discord_msg.author.discriminator} in #{channel.name}"
@@ -76,21 +75,23 @@ defmodule Event do
   defp remind_participants(event, date_str) do
     Enum.each(event.participants, fn participant -> 
       with {:ok, channel} <- @api.create_dm(participant) do
-        @api.create_message(channel.id, "This is a reminder that you are registered for an upcoming event that starts #{date_str}\n#{summarize_event(event)}")
+        @api.create_message(channel.id, "This is a reminder that you are registered for an upcoming event that starts #{date_str}\n#{summarize_event(false, event)}")
       end
     end)
   end
 
   defp do_command("help", _, m), do: help(m.channel_id, m.author.id)
+  defp do_command("adminhelp", _, m), do: adminhelp(m.channel_id, m.author.id)
+  defp do_command("eventchannels", _, m), do: eventchannels(m.channel_id, m.guild_id)
   defp do_command("dates", _, m), do: dates(m.channel_id)
-  defp do_command("soon", _, m), do: soon(m.channel_id)
-  defp do_command("me", _, m), do: me(m.channel_id, m.author.id)
-  defp do_command("mine", _, m), do: mine(m.channel_id, m.author.id)
-  defp do_command("add", [name, date, link | _], m), do: add(m.channel_id, m.author.id, name, date, link)
-  defp do_command("add", [name, date | _], m), do: add(m.channel_id, m.author.id, name, date, nil)
+  defp do_command("soon", _, m), do: soon(m.channel_id, m.guild_id)
+  defp do_command("me", _, m), do: me(m.channel_id, m.author.id, m.guild_id)
+  defp do_command("mine", _, m), do: mine(m.channel_id, m.author.id, m.guild_id)
+  defp do_command("add", [name, date, link | _], m), do: add(m.channel_id, m.author.id, m.guild_id, name, date, link)
+  defp do_command("add", [name, date | _], m), do: add(m.channel_id, m.author.id, m.guild_id, name, date, nil)
   defp do_command("remove", [name | _], m), do: remove(m.channel_id, m.author.id, m.guild_id, name)
-  defp do_command("register", [name | _], m), do: register(m.channel_id, m.author.id, name, m.mentions)
-  defp do_command("unregister", [name | _], m), do: unregister(m.channel_id, name, m.mentions)
+  defp do_command("register", [name | _], m), do: register(m.id, m.channel_id, m.author.id, m.guild_id, name, m.mentions)
+  defp do_command("unregister", [name | _], m), do: unregister(m.id, m.channel_id, m.author.id, m.guild_id, name, m.mentions)
   defp do_command("tryout", [user1, user2 | _], m), do: tryout(m.channel_id, m.guild_id, user1, user2)
   defp do_command(name, args, m), do: unknown(m.channel_id, name, args, m.author.username, m.author.discriminator)
 
@@ -154,6 +155,30 @@ defmodule Event do
     end
   end
 
+  defp adminhelp(channel_id, author_id) do
+    @api.create_message(channel_id, "I'll dm you")
+    with {:ok, channel} <- @api.create_dm(author_id) do
+      @api.create_message(channel.id, String.trim("""
+      Available commands:
+      - adminhelp
+          Shows this help text.
+          eg: '!events adminhelp'
+
+      - eventchannels
+          Shows the list of channels considered safe for teamleague information.
+          This determines several permissions, such as hiding rosters
+          in public channels.
+      """))
+    end
+  end
+
+  defp eventchannels(channel_id, guild_id) do
+    with guild <- Nostrum.Cache.GuildCache.get!(guild_id),
+         channels <- Authz.teamleague_channels(guild) do
+      @api.create_message(channel_id, "These are the channels considered safe for sensitive teamleague information: #{Enum.join(channels, ", ")}")
+    end
+  end
+
   defp dates(channel_id) do
     @api.create_message(channel_id, """
     Consider these dates:
@@ -183,10 +208,11 @@ defmodule Event do
     """)
   end
 
-  defp soon(channel_id) do
-    with events when events != [] <- Event.Persister.get_all(nil, nil, 60*60*24*7) do
+  defp soon(channel_id, guild_id) do
+    with guild <- Nostrum.Cache.GuildCache.get!(guild_id),
+         events when events != [] <- Event.Persister.get_all(nil, nil, 60*60*24*7) do
       events
-        |> Enum.map(fn e -> summarize_event(e) end)
+        |> Enum.map(fn e -> summarize_event(Authz.is_teamleague_channel?(channel_id, guild), e) end)
         |> (&(["Here's what's coming in the next 7 days:"] ++ &1)).()
         |> Enum.join("\n")
         |> (fn msg -> @api.create_message(channel_id, msg) end).()
@@ -196,30 +222,41 @@ defmodule Event do
     end
   end
 
-  defp summarize_event(%Event{name: name, date: date, creator: creator, participants: participant_ids, link: link}) do
+  defp summarize_event(is_safe?, %Event{name: name, date: date, creator: creator, participants: participant_ids, link: link}) do
     %User{username: creator_name} = Nostrum.Cache.UserCache.get!(creator)
     participant_names = participant_ids
       |> Enum.map(fn p -> Nostrum.Cache.UserCache.get!(p) end)
       |> Enum.map(fn u -> u.username end)
 
-    has_players? = length(participant_names) > 0
+    link_raw = nil_to_string(link)
+    link_text = if String.length(link_raw) > 0, do: "<#{link_raw}>", else: link_raw
+
     [
       "__**#{name}**__ by **#{creator_name}** _on #{DateTime.to_date(date)} at #{date.hour}:#{date.minute} (UTC)_",
       "#{pretty_time_until(date)} from now",
-      "#{nil_to_string(link)}",
-      (if has_players?, do: "Players (#{length(participant_names)}): #{Enum.join(participant_names, ", ")}\n", else: " ")
+      "#{link_text}",
+      summarize_players(is_safe?, participant_names),
     ]
       |> Enum.filter(fn s -> String.length(s) > 0 end)
       |> Enum.join("\n")
   end
 
+  defp summarize_players(_, []), do: ""
+  defp summarize_players(false, participant_names) do
+    "Players (#{length(participant_names)})\n"
+  end
+  defp summarize_players(true, participant_names) do
+    "Players (#{length(participant_names)}): #{Enum.join(participant_names, ", ")}\n"
+  end
+
   defp nil_to_string(nil), do: ""
   defp nil_to_string(str), do: str
 
-  defp me(channel_id, author_id) do
-    with events when events != [] <- Event.Persister.get_all(nil, author_id, nil) do
+  defp me(channel_id, author_id, guild_id) do
+    with guild <- Nostrum.Cache.GuildCache.get!(guild_id),
+         events when events != [] <- Event.Persister.get_all(nil, author_id, nil) do
       events
-        |> Enum.map(fn e -> summarize_event(e) end)
+        |> Enum.map(fn e -> summarize_event(Authz.is_teamleague_channel?(channel_id, guild), e) end)
         |> (&(["All the events you've registered for:"] ++ &1)).()
         |> Enum.join("\n")
         |> (fn msg -> @api.create_message(channel_id, msg) end).()
@@ -229,10 +266,11 @@ defmodule Event do
     end
   end
 
-  defp mine(channel_id, author_id) do
-    with events when events != [] <- Event.Persister.get_all(author_id, nil, nil) do
+  defp mine(channel_id, author_id, guild_id) do
+    with guild <- Nostrum.Cache.GuildCache.get!(guild_id),
+         events when events != [] <- Event.Persister.get_all(author_id, nil, nil) do
       events
-        |> Enum.map(fn e -> summarize_event(e) end)
+        |> Enum.map(fn e -> summarize_event(Authz.is_teamleague_channel?(channel_id, guild), e) end)
         |> (&(["All the events you're managing:"] ++ &1)).()
         |> Enum.join("\n")
         |> (fn msg -> @api.create_message(channel_id, msg) end).()
@@ -242,8 +280,9 @@ defmodule Event do
     end
   end
 
-  defp add(channel_id, author_id, name, date_str, link) do
-    with events <- Event.Persister.get_all(author_id, nil, nil),
+  defp add(channel_id, author_id, guild_id, name, date_str, link) do
+    with guild <- Nostrum.Cache.GuildCache.get!(guild_id),
+         events <- Event.Persister.get_all(author_id, nil, nil),
          false <- has_duplicate_event?(events, name),
          {:ok, date, _} <- DateTime.from_iso8601(date_str),
          {:ok, now} <- DateTime.now("Etc/UTC") do
@@ -251,7 +290,7 @@ defmodule Event do
         event = Event.Persister.create(%Event{name: name, date: date, creator: author_id, link: link})
         msg = Enum.join([
           "Excellent! I've created that event for you.",
-          summarize_event(event),
+          summarize_event(Authz.is_teamleague_channel?(channel_id, guild), event),
           "If you made a mistake, type `!events remove #{name}` and try again",
           "To add players, type `!events register #{name} @player1 @player2 ...`",
         ], "\n")
@@ -284,15 +323,13 @@ defmodule Event do
   end
 
   defp remove(channel_id, author_id, guild_id, name) do
-    with {:ok, event = %Event{name: name, creator: creator_id, date: date, participants: participant_ids, link: link}} <- Event.Persister.get(name),
+    with {:ok, event = %Event{name: name, creator: creator_id, date: date, link: link}} <- Event.Persister.get(name),
          guild <- Nostrum.Cache.GuildCache.get!(guild_id),
          true <- permission_remove(author_id, creator_id, guild),
-         participants <- Enum.map(participant_ids, fn p -> Nostrum.Cache.UserCache.get!(p) end),
          :ok <- Event.Persister.remove(event)
     do
       msg = "Ok, I'll remove \"#{name}\" that was scheduled for #{date}."
-        |> add_line_if(length(participants) > 0, "FYI #{Enum.join(participants, ", ")}")
-        |> add_line_if(link != nil, "You might have to cleanup #{link} as well.")
+        |> add_line_if(link != nil, "You might have to cleanup <#{link}> as well.")
       @api.create_message(channel_id, msg)
     else
       {:ok, :none} ->
@@ -308,7 +345,7 @@ defmodule Event do
 
   defp permission_remove(author_id, creator_id, guild) do
     %User{username: creator_name} = Nostrum.Cache.UserCache.get!(creator_id)
-    if creator_id == author_id or DiscordQuery.user_has_role?(author_id, "Admins", guild) do
+    if creator_id == author_id or Authz.is_admin?(author_id, guild) do
       true
     else
       {false, "Only the creator (#{creator_name}) or an admin can remove events"}
@@ -330,8 +367,11 @@ defmodule Event do
     end
   end
 
-  defp register(channel_id, author_id, name, users) do
-    with {:ok, event} <- Event.Persister.get(name),
+  defp register(message_id, channel_id, author_id, guild_id, name, users) do
+    with guild <- Nostrum.Cache.GuildCache.get!(guild_id),
+         {:auth_room, true} <- {:auth_room, Authz.is_teamleague_channel?(channel_id, guild)},
+         {:auth_user, true} <- {:auth_user, Authz.is_member?(author_id, guild) or Authz.is_admin?(author_id, guild)},
+         {:ok, event} <- Event.Persister.get(name),
          {unregistered, registered} <- find_already_registered(users, event),
          user_ids <- Enum.uniq(Enum.map(unregistered, fn u -> u.id end) ++ event.participants),
          :ok <- Event.Persister.register(event, user_ids),
@@ -351,6 +391,12 @@ defmodule Event do
     else
       {:error, :event_not_exists} ->
         @api.create_message(channel_id, "It doesn't look like that event exists. Are you sure you spelled it right?")
+      {:auth_room, false} ->
+        @api.delete_message(channel_id, message_id)
+        @api.create_message(channel_id, "`!events register` can only be used in rooms safe for teamleague details. I've deleted the message for you.")
+      {:auth_user, false} ->
+        @api.delete_message(channel_id, message_id)
+        @api.create_message(channel_id, "`!events register` is only available to members. I've deleted the message for you.")
     end
   end
 
@@ -362,8 +408,11 @@ defmodule Event do
     {unregistered, registered}
   end
 
-  defp unregister(channel_id, name, users) do
-    with {:ok, event} <- Event.Persister.get(name),
+  defp unregister(message_id, channel_id, author_id, guild_id, name, users) do
+    with guild <- Nostrum.Cache.GuildCache.get!(guild_id),
+         {:auth_room, true} <- {:auth_room, Authz.is_teamleague_channel?(channel_id, guild)},
+         {:auth_user, true} <- {:auth_user, Authz.is_member?(author_id, guild) or Authz.is_admin?(author_id, guild)},
+         {:ok, event} <- Event.Persister.get(name),
          {unregistered, registered} <- find_already_registered(users, event),
          registered_ids <- Enum.map(registered, fn u -> u.id end),
          user_ids <- Enum.filter(event.participants, fn p -> p not in registered_ids end),
@@ -379,6 +428,12 @@ defmodule Event do
     else
       {:error, :event_not_exists} ->
         @api.create_message(channel_id, "It doesn't look like that event exists. Are you sure you spelled it right?")
+      {:auth_room, false} ->
+        @api.delete_message(channel_id, message_id)
+        @api.create_message(channel_id, "`!events register` can only be used in rooms safe for teamleague details. I've deleted the message for you.")
+      {:auth_user, false} ->
+        @api.delete_message(channel_id, message_id)
+        @api.create_message(channel_id, "`!events register` is only available to members. I've deleted the message for you.")
     end
   end
 
