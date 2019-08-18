@@ -42,8 +42,8 @@ defmodule Event.Reminder.Server do
   defp schedule_intervals(event, intervals, alert_delta, scheduled) do
     unscheduled = unschedule_intervals(event, scheduled)
     new_reminders = intervals
-      |> Enum.filter(fn {i, _} -> i < Event.ms_until!(event) end)
-      |> Enum.map(fn {i, f} -> schedule(event, f, Event.ms_until!(event) - i, alert_delta) end)
+      |> Enum.filter(fn {i, _} -> i < Event.Formatter.ms_until!(event) end)
+      |> Enum.map(fn {i, f} -> schedule(event, f, Event.Formatter.ms_until!(event) - i, alert_delta) end)
     
     Logger.info("Scheduled #{length(new_reminders)} reminders for #{event_key(event)} after unscheduling any existing reminders")
     Map.put(unscheduled, event_key(event), new_reminders)

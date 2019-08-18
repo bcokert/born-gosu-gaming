@@ -2,10 +2,6 @@ defmodule Event do
   @enforce_keys [:name, :date, :creator]
   defstruct [:name, :date, :creator, :description, :link, participants: []]
 
-  @day 1000*60*60*24
-  @hour 1000*60*60
-  @minute 1000*60
-
   @type t :: %Event{
     name: String.t(),
     date: DateTime.t(),
@@ -19,34 +15,6 @@ defmodule Event do
   alias Nostrum.Struct.User
 
   @api Application.get_env(:born_gosu_gaming, :discord_api)
-
-  def ms_until!(%Event{date: date}) do
-    {:ok, now} = DateTime.now("Etc/UTC")
-    DateTime.diff(date, now, :millisecond)
-  end
-
-  def ms_until!(date) do
-    {:ok, now} = DateTime.now("Etc/UTC")
-    DateTime.diff(date, now, :millisecond)
-  end
-
-  defp time_until!(date) do
-    ms_total = ms_until!(date)
-    days = div(ms_total, @day)
-    hours = div(rem(ms_total, @day), @hour)
-    mins = div(rem(ms_total, @hour), @minute)
-    {days, hours, mins}
-  end
-
-  defp pretty_time_until({days, hours, minutes}) do
-    [{days > 0, "#{days} days"}, {hours > 0, "#{hours} hours"}, {minutes > 0, "#{minutes} minutes"}]
-      |> Enum.filter(fn {keep, _} -> keep end)
-      |> Enum.map(fn {_, val} -> val end)
-      |> Enum.join(", ")
-  end
-  defp pretty_time_until(date) do
-    pretty_time_until(time_until!(date))
-  end
 
   def default_reminders() do
     [
@@ -75,7 +43,7 @@ defmodule Event do
   defp remind_participants(event, date_str) do
     Enum.each(event.participants, fn participant -> 
       with {:ok, channel} <- @api.create_dm(participant) do
-        @api.create_message(channel.id, "This is a reminder that you are registered for an upcoming event that starts #{date_str}\n#{summarize_event(false, event)}")
+        @api.create_message(channel.id, "This is a reminder that you are registered for an upcoming event that starts #{date_str}\n#{Event.Formatter.full_summary(event)}")
       end
     end)
   end
@@ -208,11 +176,10 @@ defmodule Event do
     """)
   end
 
-  defp soon(channel_id, guild_id) do
-    with guild <- Nostrum.Cache.GuildCache.get!(guild_id),
-         events when events != [] <- Event.Persister.get_all(nil, nil, 60*60*24*7) do
+  defp soon(channel_id, _guild_id) do
+    with events when events != [] <- Event.Persister.get_all(nil, nil, 60*60*24*7) do
       events
-        |> Enum.map(fn e -> summarize_event(Authz.is_teamleague_channel?(channel_id, guild), e) end)
+        |> Enum.map(fn e -> Event.Formatter.full_summary(e) end)
         |> (&(["Here's what's coming in the next 7 days:"] ++ &1)).()
         |> Enum.join("\n")
         |> (fn msg -> @api.create_message(channel_id, msg) end).()
@@ -222,41 +189,37 @@ defmodule Event do
     end
   end
 
-  defp summarize_event(is_safe?, %Event{name: name, date: date, creator: creator, participants: participant_ids, link: link}) do
-    %User{username: creator_name} = Nostrum.Cache.UserCache.get!(creator)
-    participant_names = participant_ids
-      |> Enum.map(fn p -> Nostrum.Cache.UserCache.get!(p) end)
-      |> Enum.map(fn u -> u.username end)
+  # defp summarize_event(is_safe?, %Event{name: name, date: date, creator: creator, participants: participant_ids, link: link}) do
+  #   %User{username: creator_name} = Nostrum.Cache.UserCache.get!(creator)
+  #   participant_names = participant_ids
+  #     |> Enum.map(fn p -> Nostrum.Cache.UserCache.get!(p) end)
+  #     |> Enum.map(fn u -> u.username end)
 
-    link_raw = nil_to_string(link)
-    link_text = if String.length(link_raw) > 0, do: "<#{link_raw}>", else: link_raw
+  #   link_raw = nil_to_string(link)
+  #   link_text = if String.length(link_raw) > 0, do: "<#{link_raw}>", else: link_raw
 
-    [
-      "__**#{name}**__ by **#{creator_name}** _on #{DateTime.to_date(date)} at #{date.hour}:#{date.minute} (UTC)_",
-      "#{pretty_time_until(date)} from now",
-      "#{link_text}",
-      summarize_players(is_safe?, participant_names),
-    ]
-      |> Enum.filter(fn s -> String.length(s) > 0 end)
-      |> Enum.join("\n")
-  end
+  #   [
+  #     "__**#{name}**__ by **#{creator_name}** _on #{DateTime.to_date(date)} at #{date.hour}:#{date.minute} (UTC)_",
+  #     "#{Event.Formatter.time_until!(date)} from now",
+  #     "#{link_text}",
+  #     summarize_players(is_safe?, participant_names),
+  #   ]
+  #     |> Enum.filter(fn s -> String.length(s) > 0 end)
+  #     |> Enum.join("\n")
+  # end
 
-  defp summarize_players(_, []), do: ""
-  defp summarize_players(false, participant_names) do
-    "Players (#{length(participant_names)})\n"
-  end
-  defp summarize_players(true, participant_names) do
-    "Players (#{length(participant_names)}): #{Enum.join(participant_names, ", ")}\n"
-  end
+  # defp summarize_players(_, []), do: ""
+  # defp summarize_players(false, participant_names) do
+  #   "Players (#{length(participant_names)})\n"
+  # end
+  # defp summarize_players(true, participant_names) do
+  #   "Players (#{length(participant_names)}): #{Enum.join(participant_names, ", ")}\n"
+  # end
 
-  defp nil_to_string(nil), do: ""
-  defp nil_to_string(str), do: str
-
-  defp me(channel_id, author_id, guild_id) do
-    with guild <- Nostrum.Cache.GuildCache.get!(guild_id),
-         events when events != [] <- Event.Persister.get_all(nil, author_id, nil) do
+  defp me(channel_id, author_id, _guild_id) do
+    with events when events != [] <- Event.Persister.get_all(nil, author_id, nil) do
       events
-        |> Enum.map(fn e -> summarize_event(Authz.is_teamleague_channel?(channel_id, guild), e) end)
+        |> Enum.map(fn e -> Event.Formatter.full_summary(e) end)
         |> (&(["All the events you've registered for:"] ++ &1)).()
         |> Enum.join("\n")
         |> (fn msg -> @api.create_message(channel_id, msg) end).()
@@ -266,11 +229,10 @@ defmodule Event do
     end
   end
 
-  defp mine(channel_id, author_id, guild_id) do
-    with guild <- Nostrum.Cache.GuildCache.get!(guild_id),
-         events when events != [] <- Event.Persister.get_all(author_id, nil, nil) do
+  defp mine(channel_id, author_id, _guild_id) do
+    with events when events != [] <- Event.Persister.get_all(author_id, nil, nil) do
       events
-        |> Enum.map(fn e -> summarize_event(Authz.is_teamleague_channel?(channel_id, guild), e) end)
+        |> Enum.map(fn e -> Event.Formatter.full_summary(e) end)
         |> (&(["All the events you're managing:"] ++ &1)).()
         |> Enum.join("\n")
         |> (fn msg -> @api.create_message(channel_id, msg) end).()
@@ -280,9 +242,8 @@ defmodule Event do
     end
   end
 
-  defp add(channel_id, author_id, guild_id, name, date_str, link) do
-    with guild <- Nostrum.Cache.GuildCache.get!(guild_id),
-         events <- Event.Persister.get_all(author_id, nil, nil),
+  defp add(channel_id, author_id, _guild_id, name, date_str, link) do
+    with events <- Event.Persister.get_all(author_id, nil, nil),
          false <- has_duplicate_event?(events, name),
          {:ok, date, _} <- DateTime.from_iso8601(date_str),
          {:ok, now} <- DateTime.now("Etc/UTC") do
@@ -290,14 +251,13 @@ defmodule Event do
         event = Event.Persister.create(%Event{name: name, date: date, creator: author_id, link: link})
         msg = Enum.join([
           "Excellent! I've created that event for you.",
-          summarize_event(Authz.is_teamleague_channel?(channel_id, guild), event),
+          Event.Formatter.full_summary(event),
           "If you made a mistake, type `!events remove #{name}` and try again",
           "To add players, type `!events register #{name} @player1 @player2 ...`",
         ], "\n")
         @api.create_message(channel_id, msg)
       else
-        {neg_days, neg_hours, neg_minutes} = time_until!(date)
-        pretty = pretty_time_until({neg_days*-1, neg_hours*-1, neg_minutes*-1})
+        pretty = Event.Formatter.time_ago!(date)
         @api.create_message(channel_id, "New events must be in the future. Yours was #{pretty} in the past")
       end
     else
