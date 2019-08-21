@@ -1,5 +1,16 @@
 defmodule DTParser do
 
+  @timezones_to_offset %{
+    pdt: -7,
+    cdt: -5,
+    edt: -4,
+    utc: 0,
+    wet: 1,
+    eet: 2,
+    cet: 2,
+    kst: 9
+  }
+
   @months "jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december"
   @month_to_int %{
     jan: 1,
@@ -29,6 +40,7 @@ defmodule DTParser do
   }
   @time_regex ~r/((\d{1,2})\s*(am|pm))|(\d{1,2})(:(\d\d))\s*(am|pm)?/
   @date_regex ~r/(((\d{4})[-\/])?(\d{1,2})[-\/](\d{1,2}))|(#{@months})\s*(\d{1,2})([^\d]+(\d{4}))?/
+  @timezone_regex ~r/\b(pdt|cdt|edt|kst|wet|eet|cet|utc)\b/
   
   @type time_result :: [hour: integer, minute: integer]
   @type time_results :: :no_match | [time_result]
@@ -448,6 +460,85 @@ defmodule DTParser do
     {y, m, d} = {toint(yearstr), toint(monthstr), toint(daystr)}
     case Date.new(y, m, d) do
       {:ok, _} -> [year: y, month: m, day: d]
+      _ -> :no_match
+    end
+  end
+
+  @doc"""
+  Parses an arbitrary string to find all potential valid timezones.
+  Output is always in a list of keyword lists sorted by offset:
+  [
+    [name: "EDT", offset: -4],
+    [name: "PDT", offset: -7],
+    [name: "KST", offset: 9]
+  ]
+
+  Examples
+    iex> DTParser.parse_timezone(nil)
+    :no_match
+
+    iex> DTParser.parse_timezone("")
+    :no_match
+
+    iex> DTParser.parse_timezone("PDT")
+    [[name: "PDT", offset: -7]]
+
+    iex> DTParser.parse_timezone("PDT.")
+    [[name: "PDT", offset: -7]]
+
+    iex> DTParser.parse_timezone("PDT  .")
+    [[name: "PDT", offset: -7]]
+
+    iex> DTParser.parse_timezone("PDT PDT")
+    [[name: "PDT", offset: -7]]
+
+    iex> DTParser.parse_timezone(".!.PDT >>!!PDT:")
+    [[name: "PDT", offset: -7]]
+
+    iex> DTParser.parse_timezone("     KST    ")
+    [[name: "KST", offset: 9]]
+
+    iex> DTParser.parse_timezone("     K ST    ")
+    :no_match
+
+    iex> DTParser.parse_timezone("     K STPD T    ")
+    :no_match
+
+    iex> DTParser.parse_timezone("     KSTPDT    ")
+    :no_match
+
+    iex> DTParser.parse_timezone("PDT CDT EDT KST WET EET CET UTC")
+    [[name: "PDT", offset: -7], [name: "CDT", offset: -5], [name: "EDT", offset: -4], [name: "UTC", offset: 0], [name: "WET", offset: 1], [name: "CET", offset: 2], [name: "EET", offset: 2], [name: "KST", offset: 9]]
+  """
+  @spec parse_timezone(String.t()) :: :no_match | date_results
+  def parse_timezone(nil), do: :no_match
+  def parse_timezone(""), do: :no_match
+  def parse_timezone(str) do
+    legal_matches = Regex.scan(@timezone_regex, String.downcase(str))
+      |> IO.inspect()
+      |> Enum.map(&(process_possible_timezone(&1)))
+      |> Enum.filter(fn r -> r != :no_match end)
+      |> Enum.uniq()
+      |> Enum.sort(fn ([name: n1, offset: o1], [name: n2, offset: o2]) -> o1*10000000 + tz_to_compare(n1) < o2*10000000 + tz_to_compare(n2) end)
+
+    if length(legal_matches) == 0 do
+      :no_match
+    else
+      legal_matches
+    end
+  end
+
+  defp tz_to_compare(tz) when byte_size(tz) == 3, do: :binary.decode_unsigned(tz) - :binary.decode_unsigned("aaa") + 1
+  defp tz_to_compare(tz) when byte_size(tz) == 4, do: :binary.decode_unsigned(tz) - :binary.decode_unsigned("aaaa") + 1
+
+  defp process_possible_timezone([]), do: :no_match
+  defp process_possible_timezone([_]), do: :no_match
+  defp process_possible_timezone([_, tz]), do: process_legal_timezone(tz)
+
+  defp process_legal_timezone(timezone) do
+    with {:ok, offset} <- Map.fetch(@timezones_to_offset, String.to_atom(timezone)) do
+      [name: String.upcase(timezone), offset: offset]
+    else
       _ -> :no_match
     end
   end
