@@ -43,10 +43,10 @@ defmodule DTParser do
   @timezone_regex ~r/\b(pdt|cdt|edt|kst|wet|eet|cet|utc)\b/
   
   @type time_result :: [hour: integer, minute: integer]
-  @type time_results :: :no_match | [time_result]
+  @type time_results :: [time_result]
 
   @type date_result :: [year: integer, month: integer, day: integer]
-  @type date_results :: :no_match | [date_result]
+  @type date_results :: [date_result]
 
   @doc"""
   Parses an arbitrary string to find all potential valid times.
@@ -59,10 +59,10 @@ defmodule DTParser do
 
   Examples
     iex> DTParser.parse_time(nil)
-    :no_match
+    []
 
     iex> DTParser.parse_time("")
-    :no_match
+    []
 
     iex> DTParser.parse_time("at 1 pm")
     [[hour: 13, min: 0]]
@@ -101,10 +101,10 @@ defmodule DTParser do
     [[hour: 4, min: 0]]
 
     iex> DTParser.parse_time("16 am")
-    :no_match
+    []
 
     iex> DTParser.parse_time("16 pm")
-    :no_match
+    []
 
     iex> DTParser.parse_time("12:21 am")
     [[hour: 0, min: 21]]
@@ -131,7 +131,7 @@ defmodule DTParser do
     [[hour: 12, min: 1]]
 
     iex> DTParser.parse_time("0 pm")
-    :no_match
+    []
 
     iex> DTParser.parse_time("0 am")
     [[hour: 0, min: 0]]
@@ -149,7 +149,7 @@ defmodule DTParser do
     [[hour: 16, min: 30]]
 
     iex> DTParser.parse_time("Be there by 5")
-    :no_match
+    []
 
     iex> DTParser.parse_time("Be there by 5 pm")
     [[hour: 17, min: 0]]
@@ -164,7 +164,7 @@ defmodule DTParser do
     [[hour: 5, min: 20], [hour: 7, min: 30]]
 
     iex> DTParser.parse_time("3 or 1")
-    :no_match
+    []
 
     iex> DTParser.parse_time("3 pm or 1am")
     [[hour: 1, min: 0], [hour: 15, min: 0]]
@@ -176,23 +176,17 @@ defmodule DTParser do
     [[hour: 1, min: 0], [hour: 15, min: 0]]
 
     iex> DTParser.parse_time("at 3 or at 1")
-    :no_match
+    []
   """
-  @spec parse_time(String.t()) :: :no_match | time_results
-  def parse_time(nil), do: :no_match
-  def parse_time(""), do: :no_match
+  @spec parse_time(String.t()) :: time_results
+  def parse_time(nil), do: []
+  def parse_time(""), do: []
   def parse_time(str) do
-    legal_matches = Regex.scan(@time_regex, String.downcase(str))
+    Regex.scan(@time_regex, String.downcase(str))
       |> Enum.map(&(process_possible_time(&1)))
       |> Enum.filter(fn r -> r != :no_match end)
       |> Enum.uniq()
       |> Enum.sort(fn ([hour: h1, min: m1], [hour: h2, min: m2]) -> h1*60 + m1 < h2*60 + m2 end)
-
-    if length(legal_matches) == 0 do
-      :no_match
-    else
-      legal_matches
-    end
   end
 
   defp process_possible_time([]), do: :no_match
@@ -243,10 +237,10 @@ defmodule DTParser do
 
   Examples
     iex> DTParser.parse_date(nil)
-    :no_match
+    []
 
     iex> DTParser.parse_date("")
-    :no_match
+    []
 
     iex> DTParser.parse_date("2019-07-21")
     [[year: 2019, month: 7, day: 21]]
@@ -324,13 +318,13 @@ defmodule DTParser do
     [[year: Date.utc_today().year, month: 5, day: 30]]
 
     iex> DTParser.parse_date("ma 30")
-    :no_match
+    []
 
     iex> DTParser.parse_date("ma y 30")
-    :no_match
+    []
 
     iex> DTParser.parse_date("may")
-    :no_match
+    []
 
     iex> DTParser.parse_date("may 30 april")
     [[year: Date.utc_today().year, month: 5, day: 30]]
@@ -360,7 +354,7 @@ defmodule DTParser do
     [[year: Date.utc_today().year, month: 8, day: 20]]
 
     iex> DTParser.parse_date("20 20")
-    :no_match
+    []
 
     iex> DTParser.parse_date("sept sept 1")
     [[year: Date.utc_today().year, month: 9, day: 1]]
@@ -402,7 +396,7 @@ defmodule DTParser do
     [[year: Date.utc_today().year, month: 11, day: 3]]
 
     iex> DTParser.parse_date(" nov 33")
-    :no_match
+    []
 
     iex> DTParser.parse_date(" nov 3 november 9 jan 3rd 2018")
     [[year: 2018, month: 1, day: 3], [year: Date.utc_today().year, month: 11, day: 3], [year: Date.utc_today().year, month: 11, day: 9]]
@@ -411,19 +405,19 @@ defmodule DTParser do
     [[year: Date.utc_today().year, month: 12, day: 1]]
 
     iex> DTParser.parse_date(" DEC 0")
-    :no_match
+    []
 
     iex> DTParser.parse_date(" DECemBer -3")
-    :no_match
+    []
 
     iex> DTParser.parse_date(" AAASEFASDjhidecemberiodshf 3")
-    :no_match
+    []
 
     iex> DTParser.parse_date(" janfeb 3")
     [[year: Date.utc_today().year, month: 2, day: 3]]
 
     iex> DTParser.parse_date(" juliet 3")
-    :no_match
+    []
 
     iex> DTParser.parse_date(" december 1 1111")
     [[year: 1111, month: 12, day: 1]]
@@ -431,21 +425,15 @@ defmodule DTParser do
     iex> DTParser.parse_date(" december 1-1111")
     [[year: 1111, month: 12, day: 1]]
   """
-  @spec parse_date(String.t()) :: :no_match | date_results
-  def parse_date(nil), do: :no_match
-  def parse_date(""), do: :no_match
+  @spec parse_date(String.t()) :: date_results
+  def parse_date(nil), do: []
+  def parse_date(""), do: []
   def parse_date(str) do
-    legal_matches = Regex.scan(@date_regex, String.downcase(str))
+    Regex.scan(@date_regex, String.downcase(str))
       |> Enum.map(&(process_possible_date(&1)))
       |> Enum.filter(fn r -> r != :no_match end)
       |> Enum.uniq()
       |> Enum.sort(fn ([year: y1, month: m1, day: d1], [year: y2, month: m2, day: d2]) -> y1*365 + m1*(365/12) + d1 < y2*365 + m2*(365/12) + d2 end)
-
-    if length(legal_matches) == 0 do
-      :no_match
-    else
-      legal_matches
-    end
   end
 
   defp process_possible_date([]), do: :no_match
@@ -475,10 +463,10 @@ defmodule DTParser do
 
   Examples
     iex> DTParser.parse_timezone(nil)
-    :no_match
+    []
 
     iex> DTParser.parse_timezone("")
-    :no_match
+    []
 
     iex> DTParser.parse_timezone("PDT")
     [[name: "PDT", offset: -7]]
@@ -499,33 +487,26 @@ defmodule DTParser do
     [[name: "KST", offset: 9]]
 
     iex> DTParser.parse_timezone("     K ST    ")
-    :no_match
+    []
 
     iex> DTParser.parse_timezone("     K STPD T    ")
-    :no_match
+    []
 
     iex> DTParser.parse_timezone("     KSTPDT    ")
-    :no_match
+    []
 
     iex> DTParser.parse_timezone("PDT CDT EDT KST WET EET CET UTC")
     [[name: "PDT", offset: -7], [name: "CDT", offset: -5], [name: "EDT", offset: -4], [name: "UTC", offset: 0], [name: "WET", offset: 1], [name: "CET", offset: 2], [name: "EET", offset: 2], [name: "KST", offset: 9]]
   """
-  @spec parse_timezone(String.t()) :: :no_match | date_results
-  def parse_timezone(nil), do: :no_match
-  def parse_timezone(""), do: :no_match
+  @spec parse_timezone(String.t()) :: date_results
+  def parse_timezone(nil), do: []
+  def parse_timezone(""), do: []
   def parse_timezone(str) do
-    legal_matches = Regex.scan(@timezone_regex, String.downcase(str))
-      |> IO.inspect()
+    Regex.scan(@timezone_regex, String.downcase(str))
       |> Enum.map(&(process_possible_timezone(&1)))
       |> Enum.filter(fn r -> r != :no_match end)
       |> Enum.uniq()
       |> Enum.sort(fn ([name: n1, offset: o1], [name: n2, offset: o2]) -> o1*10000000 + tz_to_compare(n1) < o2*10000000 + tz_to_compare(n2) end)
-
-    if length(legal_matches) == 0 do
-      :no_match
-    else
-      legal_matches
-    end
   end
 
   defp tz_to_compare(tz) when byte_size(tz) == 3, do: :binary.decode_unsigned(tz) - :binary.decode_unsigned("aaa") + 1
