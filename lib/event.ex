@@ -181,7 +181,7 @@ defmodule Event do
       events
         |> Enum.map(fn e -> Event.Formatter.full_summary(e) end)
         |> (&(["Here's what's coming in the next 7 days:"] ++ &1)).()
-        |> Enum.join("\n")
+        |> Enum.join("\n\n")
         |> (fn msg -> @api.create_message(channel_id, msg) end).()
     else
       [] ->
@@ -221,7 +221,7 @@ defmodule Event do
       events
         |> Enum.map(fn e -> Event.Formatter.full_summary(e) end)
         |> (&(["All the events you've registered for:"] ++ &1)).()
-        |> Enum.join("\n")
+        |> Enum.join("\n\n")
         |> (fn msg -> @api.create_message(channel_id, msg) end).()
     else
       [] ->
@@ -234,7 +234,7 @@ defmodule Event do
       events
         |> Enum.map(fn e -> Event.Formatter.full_summary(e) end)
         |> (&(["All the events you're managing:"] ++ &1)).()
-        |> Enum.join("\n")
+        |> Enum.join("\n\n")
         |> (fn msg -> @api.create_message(channel_id, msg) end).()
     else
       [] ->
