@@ -42,11 +42,14 @@ defmodule DTParser do
   @date_regex ~r/(((\d{4})[-\/])?(\d{1,2})[-\/](\d{1,2}))|(#{@months})\s*(\d{1,2})([^\d]+(\d{4}))?/
   @timezone_regex ~r/\b(pdt|cdt|edt|kst|wet|eet|cet|utc)\b/
   
-  @type time_result :: [hour: integer, minute: integer]
+  @type time_result :: [hour: integer, min: integer]
   @type time_results :: [time_result]
 
   @type date_result :: [year: integer, month: integer, day: integer]
   @type date_results :: [date_result]
+
+  @type timezone_result :: [name: String.t(), offset: integer]
+  @type timezone_results :: [timezone_result]
 
   @doc"""
   Parses an arbitrary string to find all potential valid times.
@@ -498,7 +501,7 @@ defmodule DTParser do
     iex> DTParser.parse_timezone("PDT CDT EDT KST WET EET CET UTC")
     [[name: "PDT", offset: -7], [name: "CDT", offset: -5], [name: "EDT", offset: -4], [name: "UTC", offset: 0], [name: "WET", offset: 1], [name: "CET", offset: 2], [name: "EET", offset: 2], [name: "KST", offset: 9]]
   """
-  @spec parse_timezone(String.t()) :: date_results
+  @spec parse_timezone(String.t()) :: timezone_results
   def parse_timezone(nil), do: []
   def parse_timezone(""), do: []
   def parse_timezone(str) do

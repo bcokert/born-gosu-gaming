@@ -30,39 +30,50 @@ defmodule Event.Formatter do
     "Sunday",
   }
 
-  def full_summary(%Event{name: name, date: date, link: link}) do
+  def full_summary(%Event{name: name, date: date, link: link}, short? \\ false) do
     link_raw = nil_to_string(link)
     link_text = if String.length(link_raw) > 0, do: "<#{link_raw}>", else: link_raw
-
-    day_of_week_int = date
-      |> DateTime.to_date()
-      |> Date.day_of_week()
-    
-    day_of_week = elem(@days, day_of_week_int-1)
-
-    # day_of_week = elem(@days, Date.day_of_week(DateTime.to_date(date))-1)
 
     date_edt = DateTime.add(date, -4 * @sec_per_hour, :second)
     date_cest = DateTime.add(date, 2 * @sec_per_hour, :second)
     date_kst = DateTime.add(date, 9 * @sec_per_hour, :second)
 
-    time_str = [
-      "#{date_edt.hour}:#{pad_2digit(date_edt.minute)} EDT",
-      "#{date_cest.hour}:#{pad_2digit(date_cest.minute)} CEST",
-      "#{date_kst.hour}:#{pad_2digit(date_kst.minute)} KST",
+    date_str = [
+      date_string(date_edt, "EDT"),
+      date_string(date_cest, "CEST"),
+      date_string(date_kst, "KST"),
     ]
       |> Enum.map(fn t -> "__#{t}__" end)
-      |> Enum.join("  /  ")
+      |> Enum.join(if short? do " / " else "\n" end)
 
     [
       "__***#{name}***__",
-      "**Date:** #{elem(@months, date_edt.month-1)} #{date_edt.day}, #{date_edt.year} (#{day_of_week})",
-      "**Time:** #{time_str}",
+      "#{date_str}",
       "(#{time_until!(date)} from now)",
       "#{link_text}",
     ]
       |> Enum.filter(fn s -> String.length(s) > 0 end)
       |> Enum.join("\n")
+  end
+
+  defp date_string(date, timezone) do
+    "#{String.slice(elem(@months, date.month-1), 0, 3)} #{date.day}, #{date.year} (#{day_of_week(date)}) at #{date.hour}:#{pad_2digit(date.minute)} #{timezone}"
+  end
+
+  defp day_of_week(date) do
+    day_int = date
+      |> DateTime.to_date()
+      |> Date.day_of_week()
+    elem(@days, day_int-1)
+  end
+
+  def day_and_time_utc(datetime, timezone) do
+    day_of_week_int = datetime
+      |> DateTime.to_date()
+      |> Date.day_of_week()
+    day_of_week = elem(@days, day_of_week_int-1)
+
+    "#{elem(@months, datetime.month-1)} #{datetime.day}, #{datetime.year} (#{day_of_week}) at #{datetime.hour}:#{pad_2digit(datetime.minute)} #{timezone[:name]}"
   end
 
   defp pad_2digit(amnt) when amnt < 10, do: "0#{amnt}"

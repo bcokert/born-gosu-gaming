@@ -55,8 +55,7 @@ defmodule Event do
   defp do_command("soon", _, m), do: soon(m.channel_id, m.guild_id)
   defp do_command("me", _, m), do: me(m.channel_id, m.author.id, m.guild_id)
   defp do_command("mine", _, m), do: mine(m.channel_id, m.author.id, m.guild_id)
-  defp do_command("add", [name, date, link | _], m), do: add(m.channel_id, m.author.id, m.guild_id, name, date, link)
-  defp do_command("add", [name, date | _], m), do: add(m.channel_id, m.author.id, m.guild_id, name, date, nil)
+  defp do_command("add", [name | _], m), do: add(m.channel_id, m.author.id, m.guild_id, name, m.content)
   defp do_command("remove", [name | _], m), do: remove(m.channel_id, m.author.id, m.guild_id, name)
   defp do_command("register", [name | _], m), do: register(m.id, m.channel_id, m.author.id, m.guild_id, name, m.mentions)
   defp do_command("unregister", [name | _], m), do: unregister(m.id, m.channel_id, m.author.id, m.guild_id, name, m.mentions)
@@ -94,14 +93,11 @@ defmodule Event do
           Shows all events that you are managing
           eg: '!events mine'
 
-      - add <name> <date> <optional_link>
-          Creates an event with the given name and date and link.
+      - add <name> <date>
+          Creates an event with the given name and date. The name must have quotes around it.
           Each creator can only have 1 event with the same name
-          eg: '!events add "BG Super Tourney" 2019-08-22T17:00:00+00' 'http://challonge.com/test'
-          eg: '!events add VTL3 2021-08-22T17:00:00-07'
-
-          The -07 and whatnot at the end are the offsets from UTC
-          Find them all at https://www.timeanddate.com/time/zones/
+          eg: '!events add "BG Super Tourney" Aug 22 at 4:30 pm'
+          eg: '!events add VTL3 2019-06-01 at 18:00'
 
       - remove <name>
           Deletes an event with the given name.
@@ -179,7 +175,7 @@ defmodule Event do
   defp soon(channel_id, _guild_id) do
     with events when events != [] <- Event.Persister.get_all(nil, nil, 60*60*24*7) do
       events
-        |> Enum.map(fn e -> Event.Formatter.full_summary(e) end)
+        |> Enum.map(fn e -> Event.Formatter.full_summary(e, length(events) > 3) end)
         |> (&(["Here's what's coming in the next 7 days:"] ++ &1)).()
         |> Enum.join("\n\n")
         |> (fn msg -> @api.create_message(channel_id, msg) end).()
@@ -189,37 +185,10 @@ defmodule Event do
     end
   end
 
-  # defp summarize_event(is_safe?, %Event{name: name, date: date, creator: creator, participants: participant_ids, link: link}) do
-  #   %User{username: creator_name} = Nostrum.Cache.UserCache.get!(creator)
-  #   participant_names = participant_ids
-  #     |> Enum.map(fn p -> Nostrum.Cache.UserCache.get!(p) end)
-  #     |> Enum.map(fn u -> u.username end)
-
-  #   link_raw = nil_to_string(link)
-  #   link_text = if String.length(link_raw) > 0, do: "<#{link_raw}>", else: link_raw
-
-  #   [
-  #     "__**#{name}**__ by **#{creator_name}** _on #{DateTime.to_date(date)} at #{date.hour}:#{date.minute} (UTC)_",
-  #     "#{Event.Formatter.time_until!(date)} from now",
-  #     "#{link_text}",
-  #     summarize_players(is_safe?, participant_names),
-  #   ]
-  #     |> Enum.filter(fn s -> String.length(s) > 0 end)
-  #     |> Enum.join("\n")
-  # end
-
-  # defp summarize_players(_, []), do: ""
-  # defp summarize_players(false, participant_names) do
-  #   "Players (#{length(participant_names)})\n"
-  # end
-  # defp summarize_players(true, participant_names) do
-  #   "Players (#{length(participant_names)}): #{Enum.join(participant_names, ", ")}\n"
-  # end
-
   defp me(channel_id, author_id, _guild_id) do
     with events when events != [] <- Event.Persister.get_all(nil, author_id, nil) do
       events
-        |> Enum.map(fn e -> Event.Formatter.full_summary(e) end)
+        |> Enum.map(fn e -> Event.Formatter.full_summary(e, length(events) > 3) end)
         |> (&(["All the events you've registered for:"] ++ &1)).()
         |> Enum.join("\n\n")
         |> (fn msg -> @api.create_message(channel_id, msg) end).()
@@ -232,7 +201,7 @@ defmodule Event do
   defp mine(channel_id, author_id, _guild_id) do
     with events when events != [] <- Event.Persister.get_all(author_id, nil, nil) do
       events
-        |> Enum.map(fn e -> Event.Formatter.full_summary(e) end)
+        |> Enum.map(fn e -> Event.Formatter.full_summary(e, length(events) > 3) end)
         |> (&(["All the events you're managing:"] ++ &1)).()
         |> Enum.join("\n\n")
         |> (fn msg -> @api.create_message(channel_id, msg) end).()
@@ -242,41 +211,91 @@ defmodule Event do
     end
   end
 
-  defp add(channel_id, author_id, _guild_id, name, date_str, link) do
-    with events <- Event.Persister.get_all(author_id, nil, nil),
-         false <- has_duplicate_event?(events, name),
-         {:ok, date, _} <- DateTime.from_iso8601(date_str),
-         {:ok, now} <- DateTime.now("Etc/UTC") do
-      if DateTime.diff(date, now) > 0 do
-        event = Event.Persister.create(%Event{name: name, date: date, creator: author_id, link: link})
-        msg = Enum.join([
-          "Excellent! I've created that event for you.",
-          Event.Formatter.full_summary(event),
-          "If you made a mistake, type `!events remove #{name}` and try again",
-          "To add players, type `!events register #{name} @player1 @player2 ...`",
-        ], "\n")
-        @api.create_message(channel_id, msg)
-      else
-        pretty = Event.Formatter.time_ago!(date)
-        @api.create_message(channel_id, "New events must be in the future. Yours was #{pretty} in the past")
-      end
-    else
-      true ->
-        @api.create_message(channel_id, "Looks like you already have an event called '#{name}'")
+  defp add(channel_id, author_id, _guild_id, name, raw_msg) do
+    times_found = DTParser.parse_time(raw_msg)
+    dates_found = DTParser.parse_date(raw_msg)
+    timezones_found = DTParser.parse_timezone(raw_msg)
+
+    possibles = permute_possible_dates(times_found, dates_found, timezones_found)
+
+    case length(possibles) do
+      0 ->
+        @api.create_message(channel_id, Enum.join([
+          missing_permutation_msg(times_found, dates_found, timezones_found),
+          "Here's some options that match what you gave me, but add what was missing:",
+          permute_with_missing(times_found, dates_found, timezones_found)
+            |> Enum.map(fn m -> "!events add \"#{name}\" " <> m end)
+            |> Enum.join("\n")
+        ], "\n"))
+      1 ->
+        with events <- Event.Persister.get_all(author_id, nil, nil),
+          false <- has_duplicate_event?(events, name),
+          {[date | _], [time | _], [tz | _]} <- {dates_found, times_found, timezones_found},
+          _ <- IO.inspect("#{date[:year]}-#{pad_2digit(date[:month])}-#{pad_2digit(date[:day])}T#{pad_2digit(time[:hour])}:#{pad_2digit(time[:min])}:00#{pad_2digit(tz[:offset])}"),
+          {:ok, date, _} <- DateTime.from_iso8601("#{date[:year]}-#{pad_2digit(date[:month])}-#{pad_2digit(date[:day])}T#{pad_2digit(time[:hour])}:#{pad_2digit(time[:min])}:00#{pad_2digit(tz[:offset])}"),
+          {:ok, now} <- DateTime.now("Etc/UTC") do
+          if DateTime.diff(date, now) > 0 do
+            event = Event.Persister.create(%Event{name: name, date: date, creator: author_id, link: nil})
+            msg = Enum.join([
+              "Excellent! I've created that event for you.",
+              Event.Formatter.full_summary(event),
+              "If you made a mistake, type `!events remove #{name}` and try again"
+            ], "\n")
+            @api.create_message(channel_id, msg)
+          else
+            pretty = Event.Formatter.time_ago!(date)
+            @api.create_message(channel_id, "New events must be in the future. Yours was #{pretty} in the past")
+          end
+        else
+          true ->
+            @api.create_message(channel_id, "Looks like you already have an event called '#{name}'")
+          e ->
+            IO.inspect(e, label: "Error when creating event")
+            @api.create_message(channel_id, "Something went very, very wrong. Please tell PhysicsNoob")
+        end
       _ ->
-        msg = Enum.join(["Looks like that date is incorrect. Try comparing it to the examples:",
-               "```",
-               "#{date_str}     <<< yours",
-               "2021-01-19T16:30:00-08     <<< Jan 1, 2021 at 4:30 pm UTC-08 (eg: PST)",
-               "2019-12-03T02:15:00+01     <<< Dec 3, 2019 at 2:15 am UTC+01 (eg: BST)",
-               "```",
-               "The -08 and whatnot at the end are the offsets from UTC",
-               "Find yours at `https://www.timeanddate.com/time/zones/`",
-               "After creating an event, it will display the time until the event, so you can check your time, and recreate it if necessary."
-               ], "\n")
-        @api.create_message(channel_id, msg)
+        @api.create_message(channel_id, Enum.join([
+          "It looks like you could have meant multiple dates. Here's the ones I understood, try one of them?",
+          possibles
+            |> Enum.map(fn m -> "!events add \"#{name}\" " <> m end)
+            |> Enum.join("\n")
+        ], "\n"))
     end
   end
+
+  defp permute_possible_dates(times, dates, zones) do
+    for tz <- zones,
+        date <- dates,
+        time <- times do
+      {:ok, datetime, _} = DateTime.from_iso8601("#{date[:year]}-#{pad_2digit(date[:month])}-#{pad_2digit(date[:day])}T#{pad_2digit(time[:hour])}:#{pad_2digit(time[:min])}:00-00")
+      Event.Formatter.day_and_time_utc(datetime, tz)
+    end
+  end
+
+  defp pad_2digit(amnt) when amnt < 0 and amnt > -9, do: "-0#{amnt*-1}"
+  defp pad_2digit(amnt) when amnt < 10, do: "0#{amnt}"
+  defp pad_2digit(amnt), do: "#{amnt}"
+
+  defp missing_permutation_msg([], [], []), do: "I couldn't find a time, date, or timezone in that."
+  defp missing_permutation_msg([], [], [_ | _]), do: "I couldn't find a time or date in that, but I found a timezone."
+  defp missing_permutation_msg([], [_ | _], []), do: "I couldn't find a time or timezone in that, but I found a date."
+  defp missing_permutation_msg([_ | _], [], []), do: "I couldn't find a date or timezone in that, but I found a time."
+  defp missing_permutation_msg([_ | _], [_ | _], []), do: "I couldn't find a timezone in that, but I found a time and date."
+  defp missing_permutation_msg([], [_ | _], [_ | _]), do: "I couldn't find a time in that, but I found a date and timezone."
+  defp missing_permutation_msg([_ | _], [], [_ | _]), do: "I couldn't find a date in that, but I found a time and timezone."
+
+  defp permute_with_missing(times, dates, zones) do
+    permute_possible_dates(times_or_default(times), dates_or_default(dates), zones_or_default(zones))
+  end
+
+  defp times_or_default([]), do: [[hour: 4, min: 30]]
+  defp times_or_default(time), do: time
+
+  defp dates_or_default([]), do: [[year: 2019, month: 7, day: 21]]
+  defp dates_or_default(date), do: date
+
+  defp zones_or_default([]), do: [[name: "EDT", offset: -4]]
+  defp zones_or_default(zone), do: zone
 
   defp has_duplicate_event?(events, name) do
     length(Enum.filter(events, fn e -> e.name == name end)) > 0
