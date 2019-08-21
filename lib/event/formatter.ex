@@ -1,9 +1,9 @@
 defmodule Event.Formatter do
 
-  @edt_offset -4
-  @day 1000*60*60*24
-  @hour 1000*60*60
   @minute 1000*60
+  @hour @minute*60
+  @day @hour*24
+  @edt_offset_seconds -4*60*60
 
   @months {
     "January",
@@ -24,9 +24,11 @@ defmodule Event.Formatter do
     link_raw = nil_to_string(link)
     link_text = if String.length(link_raw) > 0, do: "<#{link_raw}>", else: link_raw
 
+    date_edt = DateTime.add(date, @edt_offset_seconds, :second)
+
     [
       "__**#{name}**__",
-      "#{elem(@months, date.month-1)} #{date.day}, #{date.year} at #{date.hour + @edt_offset}:#{date.minute} EDT _(#{time_until!(date)} from now)_",
+      "#{elem(@months, date_edt.month-1)} #{date_edt.day}, #{date_edt.year} at #{date_edt.hour}:#{date_edt.minute} EDT _(#{time_until!(date)} from now)_",
       "#{link_text}",
     ]
       |> Enum.filter(fn s -> String.length(s) > 0 end)
