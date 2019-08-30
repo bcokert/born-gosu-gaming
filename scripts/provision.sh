@@ -15,6 +15,11 @@ if [ ! -d ${ROOT_DIR}/asdf ]; then
     git clone https://github.com/asdf-vm/asdf.git ${ROOT_DIR}/asdf --branch v0.7.2
 fi
 
+# Node Deps
+if command -v nvm; then
+    curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash
+fi
+
 if [[ "$OSTYPE" == "darwin"* ]]; then
     brew install autoconf
     brew install automake libtool openssl wxmac
@@ -44,6 +49,12 @@ asdf global erlang 21.1
 
 asdf install elixir 1.8.2
 asdf global elixir 1.8.2
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+nvm install 11.10.0
+nvm use 11.10.0
+nvm alias default 11.10.0
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     mkdir -p db

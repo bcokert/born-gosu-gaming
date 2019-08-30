@@ -23,6 +23,7 @@ erl_crash.dump
 bg_events-*.tar
 
 config/secret/**/*.exs
+config/secret/**/*.service
 db/
 test_db/
 log

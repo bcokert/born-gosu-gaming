@@ -43,13 +43,13 @@ The main secrets are discord tokens, which can be created from ![here](https://d
 Run this once per server, plus once every time you change the provision scripts
 
 ```bash
-> ./scripts/deploy-source.sh mynewserver.com
-> ssh root@mynewserver.com "/tmp/born-gosu-gaming/build/scripts/provision.sh"
+> ./scripts/deploy-source.sh borngosugaming.com
+> ssh root@borngosugaming.com "/tmp/born-gosu-gaming/build/scripts/provision.sh"
 ```
 
 ### Deploying code to a provisioned server
 
 ```bash
-> ./scripts/deploy-source.sh mynewserver.com
-> ssh root@mynewserver.com "/tmp/born-gosu-gaming/build/scripts/build-release.sh"
+> ./scripts/deploy-source.sh borngosugaming.com
+> ssh root@borngosugaming.com "/tmp/born-gosu-gaming/build/scripts/build-release.sh"
 ```
