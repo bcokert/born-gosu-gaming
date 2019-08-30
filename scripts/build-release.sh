@@ -23,6 +23,7 @@ mix deps.get
 
 MIX_ENV=prod mix release
 
+rm -rf ${RELEASE_DIR}
 cp -r _build/prod/rel/born_gosu_gaming ${RELEASE_DIR}
 
 cd ${ASHLEY_DIR}
@@ -31,12 +32,9 @@ export NVM_DIR="$HOME/.nvm"
 nvm use 11.10.0
 npm install
 
+rm -rf ${RELEASE_ASHLEY_DIR}
 cp -r ${ASHLEY_DIR} ${RELEASE_ASHLEY_DIR}
 cp ${BUILD_DIR}/config/secret/prod/ashley.service /lib/systemd/system
 
-rm -rf ${BUILD_DIR}
-rm -rf ${RELEASE_DIR}
-rm -rf ${RELEASE_ASHLEY_DIR}
-
 MIX_ENV=prod ${RELEASE_DIR}/bin/born_gosu_gaming start
-service start ashley
+systemctl start ashley
