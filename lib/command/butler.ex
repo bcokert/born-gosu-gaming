@@ -18,6 +18,21 @@ defmodule Command.Butler do
 
   def talk(str, discord_msg) do
     cond do
+      str =~ "are you and ashley dating" ->
+        [
+          "What an inappropriate question #{discord_msg.author}. She is merely a guest here."
+        ]
+          |> Enum.random()
+          |> make_reply()
+      str =~ "how's ashley" ->
+        [
+          "She seems to be settling in here. I've tried to make her as comfortable as possible.",
+          "It's pleasant having someone else in the house.",
+          "She mentioned something about a waifu, but I haven't interred further.",
+          "She's just lounging about. Wearing alarmingly little if I say so myself."
+        ]
+          |> Enum.random()
+          |> make_reply()
       str =~ "you sexy beast" ->
         [
           "Thank you #{discord_msg.author}!",
