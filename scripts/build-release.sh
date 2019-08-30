@@ -34,7 +34,8 @@ npm install
 
 rm -rf ${RELEASE_ASHLEY_DIR}
 cp -r ${ASHLEY_DIR} ${RELEASE_ASHLEY_DIR}
-cp ${BUILD_DIR}/config/secret/prod/ashley.service /lib/systemd/system
+rm -rf /lib/systemd/system/ashley.service
+cp ${BUILD_DIR}/config/secret/prod/ashley.service /lib/systemd/system/ashley.service
 systemctl daemon-reload
 
 MIX_ENV=prod ${RELEASE_DIR}/bin/born_gosu_gaming start
