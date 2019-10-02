@@ -66,7 +66,7 @@ defmodule Command.Butler do
           |> Enum.random()
           |> make_reply()
       str =~ "tell me a joke" ->
-        [
+        jokes = [
           "There are 10 kinds of people in this world. Those who understand binary, and 9 who don't.\nI can't remember why I laughed at this.",
           "What's my favourite thing about Switzerland?\nWell the flag is a big plus.",
           "My dog ate all my scrabble tiles, and ever since he's been leaving me little messages around the house.",
@@ -84,8 +84,11 @@ defmodule Command.Butler do
           "I've been told I can be condescending. That means I talk down to people.",
           "What's the difference between a dirty old bus stop and a lobster with breast implants? One is a crusty bus station, the other one is a busty crustacean.",
           "Did you know that in the Canary Islands there are no Canaries? Same with the Virgin Islands, there are no canaries there either.",
-        ]
+        ] |> Enum.zip(1..1000)
+
+        jokes
           |> Enum.random()
+          |> (fn {v, i} -> "#{v} (#{i}/#{length(jokes)})" end).()
           |> make_reply()
       str =~ "send huskies" ->
         imgs = [

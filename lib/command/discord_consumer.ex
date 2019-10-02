@@ -14,6 +14,9 @@ defmodule Command.DiscordConsumer do
   def input_to_command(input, discord_msg) do
     input
       |> String.replace("\n", " ")
+      |> String.replace("“", "\"")
+      |> String.replace("”", "\"")
+      |> String.replace("\"\"", "\"")
       |> OptionParser.split()
       |> Enum.filter(fn s -> String.length(s) > 0 end)
       |> list_to_command(discord_msg)
