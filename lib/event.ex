@@ -45,7 +45,7 @@ defmodule Event do
   defp remind_participants(event, date_str) do
     Enum.each(event.participants, fn participant -> 
       with {:ok, channel} <- @api.create_dm(participant) do
-        @api.create_message(channel.id, "This is a reminder that you are registered for an upcoming event that starts #{date_str}\n#{Event.Formatter.full_summary(event)}")
+        @api.create_message(channel.id, "This is a reminder for an upcoming event that starts #{date_str}\n#{Event.Formatter.full_summary(event)}")
       end
     end)
   end
@@ -176,9 +176,9 @@ defmodule Event do
       if emoji == @reminder_add_emoji do
         user = Nostrum.Cache.UserCache.get!(sender_id)
         if is_add do
-          register(channel_id, event, user)
+          remind(channel_id, event, user)
         else
-          unregister(channel_id, event, user)
+          unremind(channel_id, event, user)
         end
       end
       state
@@ -341,9 +341,9 @@ defmodule Event do
     end
   end
 
-  defp register(channel_id, event, user) do
+  defp remind(channel_id, event, user) do
     if !(user.id in event.participants) do
-      with :ok <- Event.Persister.register(event, [user.id] ++ event.participants) do
+      with :ok <- Event.Persister.set_reminders(event, [user.id] ++ event.participants) do
         @api.create_message(channel_id, "#{user} alright I'll remind you about #{event.name}")
       end
     else
@@ -351,9 +351,9 @@ defmodule Event do
     end
   end
 
-  defp unregister(channel_id, event, user) do
+  defp unremind(channel_id, event, user) do
     if user.id in event.participants do
-      with :ok <- Event.Persister.register(event, Enum.filter(event.participants, fn p -> p != user.id end)) do
+      with :ok <- Event.Persister.set_reminders(event, Enum.filter(event.participants, fn p -> p != user.id end)) do
         @api.create_message(channel_id, "#{user} alright I'll no longer remind you about #{event.name}")
       end
     else

@@ -33,15 +33,14 @@ defmodule Event.Persister do
     GenServer.call(Event.Persister, {:remove, name})
   end
 
-  @spec register(String.t(), [Nostrum.Snowflake.t()]) :: :ok | {:error, any}
-  def register(name, participant_ids) do
-    GenServer.call(Event.Persister, {:register, name, participant_ids})
+  @spec set_reminders(String.t(), [Nostrum.Snowflake.t()]) :: :ok | {:error, any}
+  def set_reminders(name, participant_ids) do
+    GenServer.call(Event.Persister, {:set_reminders, name, participant_ids})
   end
 
   def init(:ok) do
     {:ok, event_table} = :dets.open_file(Application.get_env(:born_gosu_gaming, :event_db), [type: :set, auto_save: 5000])
-    {:ok, participant_table} = :dets.open_file(Application.get_env(:born_gosu_gaming, :participant_db), [type: :bag])
-    {:ok, {event_table, participant_table}}
+    {:ok, {event_table}}
   end
 
   defp first_or_none([first | _]), do: elem(first, 1)
@@ -79,38 +78,38 @@ defmodule Event.Persister do
     fn event -> participant_id in event.participants end
   end
 
-  def handle_call({:get, name}, _from, {event_table, participant_table}) do
+  def handle_call({:get, name}, _from, {event_table}) do
     with results when is_list(results) <- :dets.lookup(event_table, name) do
-      {:reply, {:ok, first_or_none(results)}, {event_table, participant_table}}
+      {:reply, {:ok, first_or_none(results)}, {event_table}}
     end
   end
 
-  def handle_call({:get_all, filters}, _from, {event_table, participant_table}) do
+  def handle_call({:get_all, filters}, _from, {event_table}) do
     with results when is_list(results) <- :dets.traverse(event_table, filter_by(filters)) do
       sorted = Enum.sort(results, fn (%Event{date: d1}, %Event{date: d2}) -> DateTime.compare(d1, d2) != :gt end)
-      {:reply, sorted, {event_table, participant_table}}
+      {:reply, sorted, {event_table}}
     end
   end
 
-  def handle_call({:create, event}, _from, {event_table, participant_table}) do
+  def handle_call({:create, event}, _from, {event_table}) do
     :ok = :dets.insert(event_table, {event.name, event})
     :ok = Event.Reminder.schedule_reminders(event)
     Logger.info("Created event '#{event.name}'")
-    {:reply, event, {event_table, participant_table}}
+    {:reply, event, {event_table}}
   end
 
-  def handle_call({:remove, event}, _from, {event_table, participant_table}) do
+  def handle_call({:remove, event}, _from, {event_table}) do
     result = :dets.delete(event_table, event.name)
     :ok = Event.Reminder.unschedule_reminders(event)
     Logger.info("Removed event '#{event.name}'")
-    {:reply, result, {event_table, participant_table}}
+    {:reply, result, {event_table}}
   end
 
-  def handle_call({:register, event, participant_ids}, _from, {event_table, participant_table}) do
+  def handle_call({:set_reminders, event, participant_ids}, _from, {event_table}) do
     updated_event = %{event | participants: participant_ids}
     :ok = :dets.insert(event_table, {event.name, updated_event})
     :ok = Event.Reminder.schedule_reminders(updated_event)
     Logger.info("Set reminders to #{length(participant_ids)} peeps for '#{event.name}'")
-    {:reply, :ok, {event_table, participant_table}}
+    {:reply, :ok, {event_table}}
   end
 end
