@@ -36,7 +36,10 @@ else
     apt-get -y install libssl-dev
 
     # Elixir Deps
-    apt-get install unzip
+    apt-get -y install unzip
+
+    # Monitoring Deps
+    apt-get -y install influxdb
 fi
 
 source ${ROOT_DIR}/asdf/asdf.sh
