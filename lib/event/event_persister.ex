@@ -6,7 +6,7 @@ defmodule Event.Persister do
     GenServer.start_link(__MODULE__, :ok, opts)
   end
 
-  @spec get(String.t()) :: {:ok, %Event{} | :none} | {:error, :event_not_found}
+  @spec get(String.t()) :: {:ok, %Event{} | :none} | {:error, any()}
   def get(name) do
     GenServer.call(Event.Persister, {:get, name})
   end
@@ -110,7 +110,7 @@ defmodule Event.Persister do
     updated_event = %{event | participants: participant_ids}
     :ok = :dets.insert(event_table, {event.name, updated_event})
     :ok = Event.Reminder.schedule_reminders(updated_event)
-    Logger.info("Registered #{length(participant_ids)} participants for '#{event.name}'")
+    Logger.info("Set reminders to #{length(participant_ids)} peeps for '#{event.name}'")
     {:reply, :ok, {event_table, participant_table}}
   end
 end

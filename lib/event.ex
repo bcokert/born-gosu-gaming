@@ -16,6 +16,8 @@ defmodule Event do
 
   @api Application.get_env(:born_gosu_gaming, :discord_api)
 
+  @reminder_add_emoji "⏰"
+
   def default_reminders() do
     [
       {7*24*60*60*1000, fn e -> remind_participants(e, "in 7 days") end},
@@ -53,12 +55,9 @@ defmodule Event do
   defp do_command("eventchannels", _, m), do: eventchannels(m.channel_id, m.guild_id)
   defp do_command("dates", _, m), do: dates(m.channel_id)
   defp do_command("soon", _, m), do: soon(m.channel_id, m.guild_id)
-  defp do_command("me", _, m), do: me(m.channel_id, m.author.id, m.guild_id)
   defp do_command("mine", _, m), do: mine(m.channel_id, m.author.id, m.guild_id)
   defp do_command("add", [name | _], m), do: add(m.channel_id, m.author.id, m.guild_id, name, m.content)
   defp do_command("remove", [name | _], m), do: remove(m.channel_id, m.author.id, m.guild_id, name)
-  defp do_command("register", [name | _], m), do: register(m.id, m.channel_id, m.author.id, m.guild_id, name, m.mentions)
-  defp do_command("unregister", [name | _], m), do: unregister(m.id, m.channel_id, m.author.id, m.guild_id, name, m.mentions)
   defp do_command("tryout", [user1, user2 | _], m), do: tryout(m.channel_id, m.guild_id, user1, user2)
   defp do_command(name, args, m), do: unknown(m.channel_id, name, args, m.author.username, m.author.discriminator)
 
@@ -85,10 +84,6 @@ defmodule Event do
           eg: '!events soon'
           eg: '!events'
 
-      - me
-          Shows all events that you are registered for
-          eg: '!events me'
-      
       - mine
           Shows all events that you are managing
           eg: '!events mine'
@@ -103,18 +98,6 @@ defmodule Event do
           Deletes an event with the given name.
           Only the creator or admin can delete an event.
           eg: '!events remove "BG Super Tourney"'
-
-      - register <name> <@discordUser1> <@discordUser2> <...>
-          Registers the given discord users to the given event.
-          Registering a user will make them receive event reminders.
-          Reminders are sent 7 days, 3 days, 1 day, 3 hrs, and 30 mins, and 1 min before the event.
-          Use discords autocomplete/user selector to ensure the name is right.
-          eg: '!events register "BG Super Tourney" @PhysicsNoob#2664 @AsheN🌯#0002'
-
-      - unregister <name> <@discordUser1> <@discordUser2> <...>
-          Unregisters the given discord users from the given event.
-          Use discords autocomplete/user selector to ensure the name is right.
-          eg: '!events unregister "BG Super Tourney" @PhysicsNoob#2664 @AsheN🌯#0002'
       """))
     end
   end
@@ -174,28 +157,40 @@ defmodule Event do
 
   defp soon(channel_id, _guild_id) do
     with events when events != [] <- Event.Persister.get_all(nil, nil, 60*60*24*7) do
+      @api.create_message(channel_id, "There are #{length(events)} events in the next 7 days (click #{@reminder_add_emoji} for reminders):")
       events
-        |> Enum.map(fn e -> Event.Formatter.full_summary(e, length(events) > 3) end)
-        |> (&(["Here's what's coming in the next 7 days:"] ++ &1)).()
-        |> Enum.join("\n\n")
-        |> (fn msg -> @api.create_message(channel_id, msg) end).()
+        |> Enum.map(fn e -> {e, Event.Formatter.full_summary(e, length(events) > 3)} end)
+        |> Enum.map(fn {e, msg} -> {e, @api.create_message(channel_id, msg)} end)
+        |> Enum.filter(fn {_, resp} -> elem(resp, 0) == :ok end)
+        |> Enum.map(fn {e, {:ok, %{id: mid}}} -> {e, mid, @api.create_reaction(channel_id, mid, @reminder_add_emoji)} end)
+        |> Enum.map(fn {e, mid, _} -> add_reminder_interaction(channel_id, e, mid) end)
     else
       [] ->
         @api.create_message(channel_id, "Looks like there aren't any events in the next 7 days")
     end
   end
 
-  defp me(channel_id, author_id, _guild_id) do
-    with events when events != [] <- Event.Persister.get_all(nil, author_id, nil) do
-      events
-        |> Enum.map(fn e -> Event.Formatter.full_summary(e, length(events) > 3) end)
-        |> (&(["All the events you've registered for:"] ++ &1)).()
-        |> Enum.join("\n\n")
-        |> (fn msg -> @api.create_message(channel_id, msg) end).()
-    else
-      [] ->
-        @api.create_message(channel_id, "Looks like you're not registered for any events")
+  defp add_reminder_interaction(channel_id, event, message_id) do
+    reducer = fn (state, %{emoji: emoji, sender: sender_id, is_add: is_add}) ->
+      {:ok, event = %Event{}} = Event.Persister.get(event.name)
+      if emoji == @reminder_add_emoji do
+        user = Nostrum.Cache.UserCache.get!(sender_id)
+        if is_add do
+          register(channel_id, event, user)
+        else
+          unregister(channel_id, event, user)
+        end
+      end
+      state
     end
+
+    Interaction.create(%Interaction{
+      name: event.name,
+      mid: message_id,
+      mstate: {},
+      reducer: reducer,
+      on_remove: nil,
+    })
   end
 
   defp mine(channel_id, author_id, _guild_id) do
@@ -346,73 +341,23 @@ defmodule Event do
     end
   end
 
-  defp register(message_id, channel_id, author_id, guild_id, name, users) do
-    with guild <- Nostrum.Cache.GuildCache.get!(guild_id),
-         {:auth_room, true} <- {:auth_room, Authz.is_teamleague_channel?(channel_id, guild)},
-         {:auth_user, true} <- {:auth_user, Authz.is_member?(author_id, guild) or Authz.is_admin?(author_id, guild)},
-         {:ok, event} <- Event.Persister.get(name),
-         {unregistered, registered} <- find_already_registered(users, event),
-         user_ids <- Enum.uniq(Enum.map(unregistered, fn u -> u.id end) ++ event.participants),
-         :ok <- Event.Persister.register(event, user_ids),
-         creator <- Nostrum.Cache.UserCache.get!(event.creator),
-         %User{id: creator_id} = creator do
-      if length(registered) > 0 do
-        @api.create_message(channel_id, "#{Enum.join(Enum.map(registered, fn u -> u.username end), ", ")} already registered")
-      end
-      if length(unregistered) > 0 do
-        @api.create_message(channel_id, "Alright I've registered #{Enum.join(Enum.map(unregistered, fn u -> u.username end), ", ")} for \"#{name}\"")
-        if author_id == creator_id do
-          @api.create_message(channel_id, "You take care of telling them about the event and keeping up with them.\nI'll make sure they get reminders about when the event is happening. Reminders are sent 7 days, 3 days, 1 day, 3 hrs, and 30 mins, and 1 min before the event.")
-        else
-          @api.create_message(channel_id, "Pinging #{creator} so they can follow up.\nI'll make sure the participants get reminders about when the event is happening. Reminders are sent 7 days, 3 days, 1 day, 3 hrs, and 30 mins, and 1 min before the event.")
-        end
+  defp register(channel_id, event, user) do
+    if !(user.id in event.participants) do
+      with :ok <- Event.Persister.register(event, [user.id] ++ event.participants) do
+        @api.create_message(channel_id, "#{user} alright I'll remind you about #{event.name}")
       end
     else
-      {:error, :event_not_exists} ->
-        @api.create_message(channel_id, "It doesn't look like that event exists. Are you sure you spelled it right?")
-      {:auth_room, false} ->
-        @api.delete_message(channel_id, message_id)
-        @api.create_message(channel_id, "`!events register` can only be used in rooms safe for teamleague details. I've deleted the message for you.")
-      {:auth_user, false} ->
-        @api.delete_message(channel_id, message_id)
-        @api.create_message(channel_id, "`!events register` is only available to members. I've deleted the message for you.")
+      @api.create_message(channel_id, "#{user} you're already getting reminders for this. Click again to remove them.")
     end
   end
 
-  defp find_already_registered(users, event) do
-    registered = users
-      |> Enum.filter(fn u -> u.id in event.participants end)
-    unregistered = users
-      |> Enum.filter(fn u -> u.id not in event.participants end)
-    {unregistered, registered}
-  end
-
-  defp unregister(message_id, channel_id, author_id, guild_id, name, users) do
-    with guild <- Nostrum.Cache.GuildCache.get!(guild_id),
-         {:auth_room, true} <- {:auth_room, Authz.is_teamleague_channel?(channel_id, guild)},
-         {:auth_user, true} <- {:auth_user, Authz.is_member?(author_id, guild) or Authz.is_admin?(author_id, guild)},
-         {:ok, event} <- Event.Persister.get(name),
-         {unregistered, registered} <- find_already_registered(users, event),
-         registered_ids <- Enum.map(registered, fn u -> u.id end),
-         user_ids <- Enum.filter(event.participants, fn p -> p not in registered_ids end),
-         :ok <- Event.Persister.register(event, user_ids) do
-      if length(unregistered) > 0 do
-        @api.create_message(channel_id, "#{Enum.join(Enum.map(unregistered, fn u -> u.username end), ", ")} not registered for this event.")
-      end
-      if length(registered) > 0 do
-        @api.create_message(channel_id, "Alright I've unregistered #{Enum.join(Enum.map(registered, fn u -> u.username end), ", ")} from \"#{name}\"")
-      else
-        @api.create_message(channel_id, "Looks like there was noone registered that I needed to unregister.")
+  defp unregister(channel_id, event, user) do
+    if user.id in event.participants do
+      with :ok <- Event.Persister.register(event, Enum.filter(event.participants, fn p -> p != user.id end)) do
+        @api.create_message(channel_id, "#{user} alright I'll no longer remind you about #{event.name}")
       end
     else
-      {:error, :event_not_exists} ->
-        @api.create_message(channel_id, "It doesn't look like that event exists. Are you sure you spelled it right?")
-      {:auth_room, false} ->
-        @api.delete_message(channel_id, message_id)
-        @api.create_message(channel_id, "`!events register` can only be used in rooms safe for teamleague details. I've deleted the message for you.")
-      {:auth_user, false} ->
-        @api.delete_message(channel_id, message_id)
-        @api.create_message(channel_id, "`!events register` is only available to members. I've deleted the message for you.")
+      @api.create_message(channel_id, "#{user} you weren't getting reminders for this. Click again to add them.")
     end
   end
 
