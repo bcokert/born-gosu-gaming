@@ -57,6 +57,20 @@ defmodule Command.DiscordConsumer do
     end
   end
 
+  def handle_event({:MESSAGE_REACTION_ADD, {%{message_id: mid, emoji: %{name: emoji_name}, user_id: uid}}, _}) do
+    user = Nostrum.Cache.UserCache.get!(uid)
+    if (user.bot != true) do
+      Interaction.interact(mid, %{emoji: emoji_name, sender: uid, is_add: true})
+    end
+  end
+
+  def handle_event({:MESSAGE_REACTION_REMOVE, {%{message_id: mid, emoji: %{name: emoji_name}, user_id: uid}}, _}) do
+    user = Nostrum.Cache.UserCache.get!(uid)
+    if (user.bot != true) do
+      Interaction.interact(mid, %{emoji: emoji_name, sender: uid, is_add: false})
+    end
+  end
+
   def handle_event(_) do
     :noop
   end
