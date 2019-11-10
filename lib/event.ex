@@ -128,30 +128,28 @@ defmodule Event do
 
   defp dates(channel_id) do
     @api.create_message(channel_id, """
-    Consider these dates:
-      `2019-07-01T16:30:00-07`
-      `2019-07-01T16:30:00+03`
-
-    The `-07` is the date offset from UTC. `-07` Might be PDT, `+03` might be EEST.
-
-    Here's some common offsets
+    These are the timezones (and their offsets) you can use:
     ```
-      Normal:                  Daylight Savings:
-                    -NA-
-      PDT:   -07               PST:  -08
-      CDT:   -05               CST:  -06
-      EDT:   -04               EST:  -05
-                    -EU-
-      UTC:   +00               BST:  +01
-      WET:   +00               WEST: +01
-      CET:   +01               CEST: +02
-      EET:   +02               EEST: +03
-                    -AS-
-      China: +08
-      Korea: +09
+      pdt: -7,  # pacific daylight
+      pst: -8,  # pacific standard
+      mdt: -6,  # mountain daylight
+      mst: -7,  # mountain standard
+      cdt: -5,  # central america daylight
+      cst: -6,  # central standard
+      edt: -4,  # eastern america daylight
+      est: -5,  # eastern standard
+      utc: 0,   # standard
+      gmt: 0,   # greenwich
+      wet: 0,   # western european
+      west: 1,  # western european summer
+      eet: 2,   # eastern europe
+      eest: 3,  # eastern europe summer
+      cet: 1,   # central europe
+      cest: 2,  # central europse summer
+      bst: 1,   # british summer
+      china: 8, # china, aka CST
+      kst: 9    # korea
     ```
-
-    Here's a list of all the possible offsets and their names, including daylight savings: https://www.timeanddate.com/time/zones/
     """)
   end
 

@@ -48,6 +48,8 @@ defmodule Event.ReminderTest do
     get_all = fn () -> fake_get_all(3, 5) end
     {:ok, _} = Event.Reminder.start_link(intervals, get_all)
 
+    :timer.sleep(2)
+
     assert %{
       "event1::123" => 2,
       "event2::123" => 2,
@@ -207,6 +209,7 @@ defmodule Event.ReminderTest do
     ]
     get_all = fn () -> fake_get_all(1, 18) end
     {:ok, _} = Event.Reminder.start_link(intervals, get_all)
+    :timer.sleep(19)
 
     assert %{
       "event1::123" => 3,

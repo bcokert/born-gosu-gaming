@@ -1,14 +1,25 @@
 defmodule DTParser do
 
   @timezones_to_offset %{
-    pdt: -7,
-    cdt: -5,
-    edt: -4,
-    utc: 0,
-    wet: 1,
-    eet: 2,
-    cet: 2,
-    kst: 9
+    pdt: -7,  # pacific daylight
+    pst: -8,  # pacific standard
+    mdt: -6,  # mountain daylight
+    mst: -7,  # mountain standard
+    cdt: -5,  # central america daylight
+    cst: -6,  # central standard
+    edt: -4,  # eastern america daylight
+    est: -5,  # eastern standard
+    utc: 0,   # standard
+    gmt: 0,   # greenwich
+    wet: 0,   # western european
+    west: 1,  # western european summer
+    eet: 2,   # eastern europe
+    eest: 3,  # eastern europe summer
+    cet: 1,   # central europe
+    cest: 2,  # central europse summer
+    bst: 1,   # british summer
+    china: 8, # china, aka CST
+    kst: 9    # korea
   }
 
   @months "jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december"
@@ -40,8 +51,8 @@ defmodule DTParser do
   }
   @time_regex ~r/((\d{1,2})\s*(am|pm))|(\d{1,2})(:(\d\d))\s*(am|pm)?/
   @date_regex ~r/(((\d{4})[-\/])?(\d{1,2})[-\/](\d{1,2}))|(#{@months})\s*(\d{1,2})([^\d]+(\d{4}))?/
-  @timezone_regex ~r/\b(pdt|cdt|edt|kst|wet|eet|cet|utc)\b/
-  
+  @timezone_regex ~r/\b(pdt|pst|mdt|mst|cdt|cst|edt|est|kst|wet|west|eet|eest|cet|cest|bst|china|utc|gmt)\b/
+
   @type time_result :: [hour: integer, min: integer]
   @type time_results :: [time_result]
 
@@ -499,7 +510,30 @@ defmodule DTParser do
     []
 
     iex> DTParser.parse_timezone("PDT CDT EDT KST WET EET CET UTC")
-    [[name: "PDT", offset: -7], [name: "CDT", offset: -5], [name: "EDT", offset: -4], [name: "UTC", offset: 0], [name: "WET", offset: 1], [name: "CET", offset: 2], [name: "EET", offset: 2], [name: "KST", offset: 9]]
+    [[name: "PDT", offset: -7], [name: "CDT", offset: -5], [name: "EDT", offset: -4], [name: "UTC", offset: 0], [name: "WET", offset: 0], [name: "CET", offset: 1], [name: "EET", offset: 2], [name: "KST", offset: 9]]
+
+    iex> DTParser.parse_timezone("PDT PST mdt MST CDT cst EDT EST UTC GMT wet WEST EET EEST CeT CEST BST chINa KST")
+    [
+      [name: "PST", offset: -8],
+      [name: "MST", offset: -7],
+      [name: "PDT", offset: -7],
+      [name: "CST", offset: -6],
+      [name: "MDT", offset: -6],
+      [name: "CDT", offset: -5],
+      [name: "EST", offset: -5],
+      [name: "EDT", offset: -4],
+      [name: "GMT", offset: 0],
+      [name: "UTC", offset: 0],
+      [name: "WET", offset: 0],
+      [name: "BST", offset: 1],
+      [name: "CET", offset: 1],
+      [name: "WEST", offset: 1],
+      [name: "CEST", offset: 2],
+      [name: "EET", offset: 2],
+      [name: "EEST", offset: 3],
+      [name: "CHINA", offset: 8],
+      [name: "KST", offset: 9],
+    ]
   """
   @spec parse_timezone(String.t()) :: timezone_results
   def parse_timezone(nil), do: []
@@ -509,11 +543,12 @@ defmodule DTParser do
       |> Enum.map(&(process_possible_timezone(&1)))
       |> Enum.filter(fn r -> r != :no_match end)
       |> Enum.uniq()
-      |> Enum.sort(fn ([name: n1, offset: o1], [name: n2, offset: o2]) -> o1*10000000 + tz_to_compare(n1) < o2*10000000 + tz_to_compare(n2) end)
+      |> Enum.sort_by(fn ([name: n1, offset: o1]) -> {o1, n1} end)
   end
 
   defp tz_to_compare(tz) when byte_size(tz) == 3, do: :binary.decode_unsigned(tz) - :binary.decode_unsigned("aaa") + 1
   defp tz_to_compare(tz) when byte_size(tz) == 4, do: :binary.decode_unsigned(tz) - :binary.decode_unsigned("aaaa") + 1
+  defp tz_to_compare(tz) when byte_size(tz) == 5, do: :binary.decode_unsigned(tz) - :binary.decode_unsigned("aaaa") + 1
 
   defp process_possible_timezone([]), do: :no_match
   defp process_possible_timezone([_]), do: :no_match

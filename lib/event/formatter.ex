@@ -34,13 +34,13 @@ defmodule Event.Formatter do
     link_raw = nil_to_string(link)
     link_text = if String.length(link_raw) > 0, do: "<#{link_raw}>", else: link_raw
 
-    date_edt = DateTime.add(date, -4 * @sec_per_hour, :second)
-    date_cest = DateTime.add(date, 2 * @sec_per_hour, :second)
+    date_est = DateTime.add(date, -5 * @sec_per_hour, :second)
+    date_cet = DateTime.add(date, 1 * @sec_per_hour, :second)
     date_kst = DateTime.add(date, 9 * @sec_per_hour, :second)
 
     date_str = [
-      date_string(date_edt, "EDT"),
-      date_string(date_cest, "CEST"),
+      date_string(date_est, "EST"),
+      date_string(date_cet, "CET"),
       date_string(date_kst, "KST"),
     ]
       |> Enum.map(fn t -> "__#{t}__" end)
