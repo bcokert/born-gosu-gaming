@@ -11,7 +11,7 @@ if [ -d ${RELEASE_DIR} ]; then
     ${RELEASE_DIR}/bin/born_gosu_gaming stop
 fi
 if [ -d ${RELEASE_ASHLEY_DIR} ]; then
-    service stop ashley
+    systemctl stop ashley
 fi
 
 source ${ROOT_DIR}/asdf/asdf.sh
