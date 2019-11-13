@@ -32,7 +32,7 @@ defmodule DiscordQuery do
   end
 
   def admins(guild), do: users_with_role("Admins", guild)
-  def mentors(guild), do: users_with_role("Mentor", guild)
+  def mentors(guild), do: users_with_role("Mentors", guild)
   def members(guild), do: users_with_role("Born Gosu", guild)
   def tryouts(guild), do: users_with_role("Tryout Member", guild)
   def non_members(guild), do: users_with_role("Non-Born Gosu", guild)
