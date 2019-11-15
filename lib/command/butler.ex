@@ -20,24 +20,32 @@ defmodule Command.Butler do
     cond do
       str =~ "are you and ashley dating" ->
         [
-          "What an inappropriate question #{discord_msg.author}. She is merely a guest here."
+          "No no no no, we are simply roomates!",
+        ]
+          |> Enum.random()
+          |> make_reply()
+      str =~ "do you like ashley" ->
+        [
+          "Wha - well she is a pleasant roomate.",
+          ".... Oh dear! I'm sorry, what did you say?",
+          "What do you mean? Oh, as a roomate, of course. Yes, I ... enjoy her presence.",
         ]
           |> Enum.random()
           |> make_reply()
       str =~ "how's ashley" ->
         [
-          "She seems to be settling in here. I've tried to make her as comfortable as possible.",
-          "It's pleasant having someone else in the house.",
+          "She's taken up hanging her smallclothes in our shared spaces. I find this rather alarming.",
           "She mentioned something about a waifu, but I haven't interred further.",
-          "She's just lounging about. Wearing alarmingly little if I say so myself."
+          "She's just lounging about. Wearing alarmingly little if I say so myself.",
+          "She just mentioned something to me about shipping. I asked if she used to be in the business, but she just giggled and ran off.",
+          "What passes for acceptable clothing these days is distressing. But she does seem to be happy.",
         ]
           |> Enum.random()
           |> make_reply()
       str =~ "you sexy beast" ->
         [
           "Thank you #{discord_msg.author}!",
-          "Good heavens #{discord_msg.author}, what a compliment",
-          "No doubt half as sexy as you, #{discord_msg.author}",
+          "Good heavens #{discord_msg.author}, what a compliment"
         ]
           |> Enum.random()
           |> make_reply()
@@ -54,6 +62,7 @@ defmodule Command.Butler do
           "Batman? Never heard such a word.",
           "I simply have no idea who you're referring to #{discord_msg.author}.",
           "What a strange name. Batman. Seems like a figment of your imagination.",
+          "No no no no no no no no idea what you're referring to #{discord_msg.author}",
         ]
           |> Enum.random()
           |> make_reply()
@@ -125,6 +134,38 @@ defmodule Command.Butler do
           "https://cdn.discordapp.com/attachments/96709636282908672/597511286062055434/image0.jpg",
           "https://cdn.discordapp.com/attachments/557221533899030558/584913722418659330/video.mov",
           "https://cdn.discordapp.com/attachments/96709636282908672/597520992390348839/image0.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644225253010178084/image1.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644225253668552714/image0.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644225254360875008/image2.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644225638676299807/image1.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644225639259570176/image0.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644225639800504330/image2.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644226026414669834/image1.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644226027408588847/image0.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644226215820918795/image1.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644226216672624689/image0.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644226855578107924/image1.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644226856039743508/image0.jpg",
+        ] |> Enum.zip(1..1000)
+
+          imgs
+            |> Enum.random()
+            |> (fn {v, i} -> "#{v} (#{i}/#{length(imgs)})" end).()
+            |> make_reply()
+      str =~ "send corgis" ->
+        imgs = [
+          "https://cdn.discordapp.com/attachments/625541706313629698/644225253010178084/image1.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644225253668552714/image0.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644225254360875008/image2.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644225638676299807/image1.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644225639259570176/image0.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644225639800504330/image2.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644226026414669834/image1.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644226027408588847/image0.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644226215820918795/image1.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644226216672624689/image0.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644226855578107924/image1.jpg",
+          "https://cdn.discordapp.com/attachments/625541706313629698/644226856039743508/image0.jpg",
         ] |> Enum.zip(1..1000)
 
           imgs
