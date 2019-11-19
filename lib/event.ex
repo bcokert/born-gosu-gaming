@@ -254,8 +254,9 @@ defmodule Event do
         with events <- Event.Persister.get_all(author_id, nil, nil),
           false <- has_duplicate_event?(events, name),
           {[date | _], [time | _], [tz | _]} <- {dates_found, times_found, timezones_found},
-          _ <- IO.inspect("#{date[:year]}-#{pad_2digit(date[:month])}-#{pad_2digit(date[:day])}T#{pad_2digit(time[:hour])}:#{pad_2digit(time[:min])}:00#{pad_2digit(tz[:offset])}"),
-          {:ok, date, _} <- DateTime.from_iso8601("#{date[:year]}-#{pad_2digit(date[:month])}-#{pad_2digit(date[:day])}T#{pad_2digit(time[:hour])}:#{pad_2digit(time[:min])}:00#{pad_2digit(tz[:offset])}"),
+          date_str = "#{date[:year]}-#{pad_2digit(date[:month])}-#{pad_2digit(date[:day])}T#{pad_2digit(time[:hour])}:#{pad_2digit(time[:min])}:00#{pad_2digit_tz(tz[:offset])}",
+          _ <- Logger.info("Creating event from date string: #{date_str}"),
+          {:ok, date, _} <- DateTime.from_iso8601(date_str),
           {:ok, now} <- DateTime.now("Etc/UTC") do
           if DateTime.diff(date, now) > 0 do
             event = Event.Persister.create(%Event{name: name, date: date, creator: author_id, link: nil})
@@ -272,8 +273,10 @@ defmodule Event do
         else
           true ->
             @api.create_message(channel_id, "Looks like you already have an event called '#{name}'")
+          {:error, :invalid_format} ->
+            @api.create_message(channel_id, "It looks like there's something wrong with the date format")
           e ->
-            IO.inspect(e, label: "Error when creating event")
+            Logger.error("Error when creating event: #{inspect(e)}")
             @api.create_message(channel_id, "Something went very, very wrong. Please tell PhysicsNoob")
         end
       _ ->
@@ -295,9 +298,13 @@ defmodule Event do
     end
   end
 
-  defp pad_2digit(amnt) when amnt < 0 and amnt > -9, do: "-0#{amnt*-1}"
   defp pad_2digit(amnt) when amnt < 10, do: "0#{amnt}"
   defp pad_2digit(amnt), do: "#{amnt}"
+
+  defp pad_2digit_tz(amnt) when amnt <= -10, do: "#{amnt}"
+  defp pad_2digit_tz(amnt) when amnt < 0, do: "-0#{amnt*-1}"
+  defp pad_2digit_tz(amnt) when amnt < 10, do: "+0#{amnt}"
+  defp pad_2digit_tz(amnt) when amnt >= 10, do: "+#{amnt}"
 
   defp missing_permutation_msg([], [], []), do: "I couldn't find a time, date, or timezone in that."
   defp missing_permutation_msg([], [], [_ | _]), do: "I couldn't find a time or date in that, but I found a timezone."

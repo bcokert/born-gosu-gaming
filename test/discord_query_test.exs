@@ -22,7 +22,7 @@ defmodule DiscordQueryTest do
       },
       roles: %{
         11 => %{role() | id: 11, name: "role1"},
-        22 => %{role() | id: 22, name: "Mentor"},
+        22 => %{role() | id: 22, name: "Mentors"},
         33 => %{role() | id: 33, name: "Born Gosu"},
         44 => %{role() | id: 44, name: "role4"},
         55 => %{role() | id: 55, name: "role5"},
@@ -136,7 +136,7 @@ defmodule DiscordQueryTest do
 
   test "user_has_role? with user_id", context do
     assert DiscordQuery.user_has_role?(333, "role1", context[:guild])
-    assert DiscordQuery.user_has_role?(333, "Mentor", context[:guild])
+    assert DiscordQuery.user_has_role?(333, "Mentors", context[:guild])
     assert DiscordQuery.user_has_role?(333, "Admins", context[:guild])
 
     assert DiscordQuery.user_has_role?(333, "Admins", context[:guild])
@@ -146,7 +146,7 @@ defmodule DiscordQueryTest do
 
   test "user_has_role? with user struct", context do
     assert DiscordQuery.user_has_role?(%User{id: 333}, "role1", context[:guild])
-    assert DiscordQuery.user_has_role?(%User{id: 333}, "Mentor", context[:guild])
+    assert DiscordQuery.user_has_role?(%User{id: 333}, "Mentors", context[:guild])
     assert DiscordQuery.user_has_role?(%User{id: 333}, "Admins", context[:guild])
 
     assert DiscordQuery.user_has_role?(%User{id: 333}, "Admins", context[:guild])
