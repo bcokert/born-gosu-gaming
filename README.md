@@ -50,6 +50,9 @@ Run this once per server, plus once every time you change the provision scripts
 ### Deploying code to a provisioned server
 
 ```bash
-> ./scripts/deploy-source.sh borngosugaming.com
-> ssh root@borngosugaming.com "/tmp/born-gosu-gaming/build/scripts/build-release.sh"
+> ./scripts/deploy-source-alfred.sh borngosugaming.com
+> ssh root@borngosugaming.com "/tmp/born-gosu-gaming/build/scripts/build-release-alfred.sh"
+
+> ./scripts/deploy-source-ashley.sh borngosugaming.com
+> ssh root@borngosugaming.com "/tmp/born-gosu-gaming/build/scripts/build-release-ashley.sh"
 ```

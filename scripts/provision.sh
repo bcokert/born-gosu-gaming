@@ -1,5 +1,5 @@
 #! /bin/bash
-# Run this on a server to provision it, after running scripts/deploy-source
+# Run this on a server to provision it, after running scripts/deploy-source-alfred
 # This only needs to be done once in a while per server
 
 ROOT_DIR="/var/born-gosu-gaming"
