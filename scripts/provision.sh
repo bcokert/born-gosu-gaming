@@ -45,6 +45,7 @@ source ${ROOT_DIR}/asdf/asdf.sh
 asdf plugin-add elixir
 asdf plugin-add erlang
 
+export KERL_CONFIGURE_OPTIONS="--without-javac --with-ssl=$(brew --prefix openssl)"
 asdf install erlang 21.1
 asdf global erlang 21.1
 
