@@ -23,8 +23,6 @@ fi
 if [[ "$OSTYPE" == "darwin"* ]]; then
     brew install autoconf
     brew install automake libtool openssl wxmac
-    brew install libtool openssl wxmac
-    brew install openssl
 else
     # Erlang Deps
     apt-get -y install build-essential
