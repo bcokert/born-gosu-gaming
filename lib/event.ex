@@ -83,6 +83,8 @@ defmodule Event do
   defp do_command("help", _, m), do: help(m.channel_id, m.author.id)
   defp do_command("adminhelp", _, m), do: adminhelp(m.channel_id, m.author.id)
   defp do_command("eventchannels", _, m), do: eventchannels(m.channel_id, m.guild_id)
+  defp do_command("setdaylightsavings", [region, enabled? | _], m), do: setdaylightsavings(m.channel_id, m.guild_id, m.author.id, region, enabled?)
+  defp do_command("daylightsavings", _, m), do: daylightsavings(m.channel_id, m.guild_id, m.author.id)
   defp do_command("dates", _, m), do: dates(m.channel_id)
   defp do_command("soon", _, m), do: soon(m.channel_id, m.guild_id)
   defp do_command("mine", _, m), do: mine(m.channel_id, m.author.id, m.guild_id)
@@ -145,6 +147,16 @@ defmodule Event do
           Shows the list of channels considered safe for teamleague information.
           This determines several permissions, such as hiding rosters
           in public channels.
+
+      - daylightsavings
+          Displays what the settings for daylight savings are
+          eg: '!events daylightsavings'
+      
+      - setdaylightsavings <eu|na> <yes|no>
+          Toggles the default output formats between Daylight Savings and Summer
+          times.
+          eg: '!events setdaylightsavings na yes'
+          eg: '!events setdaylightsavings eu no'
       """))
     end
   end
@@ -154,6 +166,45 @@ defmodule Event do
          channels <- Authz.teamleague_channels(guild) do
       @api.create_message(channel_id, "These are the channels considered safe for sensitive teamleague information: #{Enum.join(channels, ", ")}")
     end
+  end
+
+  defp daylightsavings(channel_id, guild_id, author_id) do
+    with guild <- Nostrum.Cache.GuildCache.get!(guild_id) do
+      if Authz.is_admin?(author_id, guild) do
+        settings = Settings.get_output_timezones()
+        if Map.has_key?(settings, :EDT), do: @api.create_message(channel_id, "For NA, daylight savings is active")
+        if Map.has_key?(settings, :EST), do: @api.create_message(channel_id, "For NA, daylight savings is not active")
+        if Map.has_key?(settings, :CEST), do: @api.create_message(channel_id, "For EU, daylight savings is active")
+        if Map.has_key?(settings, :CET), do: @api.create_message(channel_id, "For EU, daylight savings is not active")
+      else
+        @api.create_message(channel_id, "Only admins can use this")
+      end
+    end
+  end
+
+  defp setdaylightsavings(channel_id, guild_id, author_id, region, enabled?) do
+    with guild <- Nostrum.Cache.GuildCache.get!(guild_id) do
+      if Authz.is_admin?(author_id, guild) do
+        case {region, enabled?} do
+          {"eu", "yes"} ->
+            Settings.set_daylight_savings(true, :eu)
+            @api.create_message(channel_id, "Alright I've set output to use daylight savings for europe")
+          {"eu", "no"} ->
+            Settings.set_daylight_savings(false, :eu)
+            @api.create_message(channel_id, "Alright I've set output to not use daylight savings for europe")
+          {"na", "yes"} ->
+            Settings.set_daylight_savings(true, :na)
+            @api.create_message(channel_id, "Alright I've set output to use daylight savings for north america")
+          {"na", "no"} ->
+            Settings.set_daylight_savings(false, :na)
+            @api.create_message(channel_id, "Alright I've set output to not use daylight savings for north america")
+          _ ->
+            @api.create_message(channel_id, "Invalid region or state. Try `!events setdaylightsavings eu yes` or `!events setdaylightsavings na no`")
+        end
+      else
+        @api.create_message(channel_id, "Only admins can change the output timezones")
+      end
+    end 
   end
 
   defp dates(channel_id) do

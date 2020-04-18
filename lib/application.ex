@@ -8,6 +8,7 @@ defmodule Main do
         {Event.Persister, name: Event.Persister},
         %{id: Interaction, start: {Interaction, :start_link, []}},
         %{id: Event.Reminder.Server, start: {Event.Reminder, :start_link, [Event.default_reminders()]}},
+        %{id: Settings, start: {Settings, :start_link, []}},
       ]
     else
       # We don't startup the Nostrum application or the consumer or reminder service, but we still need the cache
