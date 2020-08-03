@@ -16,7 +16,7 @@ git clone git@github.com:AshenKyle/bg-ctl-helper.git ${ASHLEY_DIR}
 
 echo -e "Ensuring fresh secrets"
 pushd ${ASHLEY_DIR}
-yarn run decrypt-secrets
+npm run decrypt-secrets
 popd
 
 echo -e "Moving files to server at '${HOST}'"

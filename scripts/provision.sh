@@ -2,6 +2,7 @@
 # Run this on a server to provision it, after running scripts/deploy-source-alfred
 # This only needs to be done once in a while per server
 
+BUILD_DIR="/tmp/born-gosu-gaming"
 ROOT_DIR="/var/born-gosu-gaming"
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -11,8 +12,8 @@ else
     apt-get -y install git
 fi
 
-if [ ! -d ${ROOT_DIR}/asdf ]; then
-    git clone https://github.com/asdf-vm/asdf.git ${ROOT_DIR}/asdf --branch v0.7.2
+if [ ! -d ${BUILD_DIR}/asdf ]; then
+    git clone https://github.com/asdf-vm/asdf.git ${BUILD_DIR}/asdf --branch v0.7.2
 fi
 
 # Node Deps
@@ -40,7 +41,7 @@ else
     apt-get -y install influxdb
 fi
 
-source ${ROOT_DIR}/asdf/asdf.sh
+source ${BUILD_DIR}/asdf/asdf.sh
 
 asdf plugin-add elixir
 asdf plugin-add erlang
