@@ -417,9 +417,11 @@ defmodule Event do
     test_mode_role = Application.get_env(:born_gosu_gaming, :test_mode_role)
     creator_role = Application.get_env(:born_gosu_gaming, :creator_role)
 
-    is_creator = DiscordQuery.user_has_role?(author_id, creator_role, guild)
-    is_tester = DiscordQuery.user_has_role?(author_id, test_mode_role, guild)
-    is_admin = DiscordQuery.user_has_role?(author_id, "Admins", guild)
+    member = @api.get_guild_member!(guild.id, author_id)
+
+    is_creator = DiscordQuery.member_has_role?(member, creator_role, guild)
+    is_tester = DiscordQuery.member_has_role?(member, test_mode_role, guild)
+    is_admin = DiscordQuery.member_has_role?(member, "Admins", guild)
     if is_test_mode do
       is_tester or is_admin
     else

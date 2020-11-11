@@ -4,11 +4,14 @@ defmodule Authz do
   Provides a declarative api for authorizing calls based on user or channel.
   """
 
+  @api Application.get_env(:born_gosu_gaming, :discord_api)
+
   @type uid :: Nostrum.Snowflake.t()
 
   @spec has_roles?(uid, [String.t()], Nostrum.Struct.Guild.t()) :: boolean
   def has_roles?(user_id, [role_name | rest], guild) do
-    DiscordQuery.user_has_role?(user_id, role_name, guild) and has_roles?(user_id, rest, guild)
+    member = @api.get_guild_member!(guild.id, user_id)
+    DiscordQuery.member_has_role?(member, role_name, guild) and has_roles?(user_id, rest, guild)
   end
   def has_roles?(_, [], _), do: true
   def has_roles?(user_id, role_name, guild), do: has_roles?(user_id, [role_name], guild)

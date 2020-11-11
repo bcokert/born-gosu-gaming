@@ -2,6 +2,7 @@ defmodule DiscordQuery do
   alias Nostrum.Struct.Guild
   alias Nostrum.Struct.Guild.Role
   alias Nostrum.Struct.User
+  alias Nostrum.Struct.Guild.Member
 
   # All nostrum structs in here should come from the cache when possible
   # eg: Nostrum.Cache.GuildCache.get!(guild_id)
@@ -43,6 +44,9 @@ defmodule DiscordQuery do
       |> users_with_role(guild)
       |> Enum.filter(fn %User{id: id} -> id == user_id end)
       |> (fn u -> length(u) > 0 end).()
+  end
+  def member_has_role?(%Member{roles: roles}, role, guild) when is_binary(role) do
+    Enum.any?(roles, fn r -> r == role_by_name(role, guild).id end)
   end
 
   @spec matching_users([%User{}], String.t()) :: [%User{}]
