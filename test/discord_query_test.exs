@@ -134,26 +134,6 @@ defmodule DiscordQueryTest do
     ] = DiscordQuery.tryouts(context[:guild])
   end
 
-  test "user_has_role? with user_id", context do
-    assert DiscordQuery.user_has_role?(333, "role1", context[:guild])
-    assert DiscordQuery.user_has_role?(333, "Mentors", context[:guild])
-    assert DiscordQuery.user_has_role?(333, "Admins", context[:guild])
-
-    assert DiscordQuery.user_has_role?(333, "Admins", context[:guild])
-    assert DiscordQuery.user_has_role?(555, "Admins", context[:guild])
-    assert DiscordQuery.user_has_role?(666, "Admins", context[:guild])
-  end
-
-  test "user_has_role? with user struct", context do
-    assert DiscordQuery.user_has_role?(%User{id: 333}, "role1", context[:guild])
-    assert DiscordQuery.user_has_role?(%User{id: 333}, "Mentors", context[:guild])
-    assert DiscordQuery.user_has_role?(%User{id: 333}, "Admins", context[:guild])
-
-    assert DiscordQuery.user_has_role?(%User{id: 333}, "Admins", context[:guild])
-    assert DiscordQuery.user_has_role?(%User{id: 555}, "Admins", context[:guild])
-    assert DiscordQuery.user_has_role?(%User{id: 666}, "Admins", context[:guild])
-  end
-
   test "member_has_role?", context do
     assert DiscordQuery.member_has_role?(context[:guild].members[333], "role1", context[:guild])
     assert DiscordQuery.member_has_role?(context[:guild].members[333], "Mentors", context[:guild])

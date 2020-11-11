@@ -38,13 +38,6 @@ defmodule DiscordQuery do
   def tryouts(guild), do: users_with_role("Tryout Member", guild)
   def non_members(guild), do: users_with_role("Non-Born Gosu", guild)
 
-  def user_has_role?(%User{id: user_id}, role, guild), do: user_has_role?(user_id, role, guild)
-  def user_has_role?(user_id, role, guild) when is_binary(role) do
-    role
-      |> users_with_role(guild)
-      |> Enum.filter(fn %User{id: id} -> id == user_id end)
-      |> (fn u -> length(u) > 0 end).()
-  end
   def member_has_role?(%Member{roles: roles}, role, guild) when is_binary(role) do
     Enum.any?(roles, fn r -> r == role_by_name(role, guild).id end)
   end
