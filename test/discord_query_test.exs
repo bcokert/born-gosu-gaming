@@ -142,5 +142,7 @@ defmodule DiscordQueryTest do
     assert DiscordQuery.member_has_role?(context[:guild].members[333], "Admins", context[:guild])
     assert DiscordQuery.member_has_role?(context[:guild].members[555], "Admins", context[:guild])
     assert DiscordQuery.member_has_role?(context[:guild].members[666], "Admins", context[:guild])
+
+    assert !DiscordQuery.member_has_role?(context[:guild].members[666], "akjsdjgahsdgjka", context[:guild])
   end
 end

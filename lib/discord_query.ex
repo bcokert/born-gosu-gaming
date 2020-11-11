@@ -39,7 +39,8 @@ defmodule DiscordQuery do
   def non_members(guild), do: users_with_role("Non-Born Gosu", guild)
 
   def member_has_role?(%Member{roles: roles}, role, guild) when is_binary(role) do
-    Enum.any?(roles, fn r -> r == role_by_name(role, guild).id end)
+    roleobj = role_by_name(role, guild)
+    roleobj != :none and Enum.any?(roles, fn r -> r == roleobj.id end)
   end
 
   @spec matching_users([%User{}], String.t()) :: [%User{}]
