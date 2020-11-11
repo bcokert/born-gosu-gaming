@@ -7,17 +7,21 @@ A collection of bots and tools, as well as eventually a co-server for the websit
 ### First Time
 ```bash
 > ./scripts/provision.sh
+> source /tmp/born-gosu-gaming/asdf/asdf.sh
+> mix deps.get
 ```
 
 ### Running Locally
 
 ```bash
+> source /tmp/born-gosu-gaming/asdf/asdf.sh
 > iex -S mix
 ```
 
 ### Testing Locally
 
 ```bash
+> source /tmp/born-gosu-gaming/asdf/asdf.sh
 > mix test
 ```
 

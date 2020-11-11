@@ -61,6 +61,7 @@ nvm alias default 11.10.0
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     mkdir -p db
+    mkdir -p test_db
 else
     mkdir -p ${ROOT_DIR}/db
 fi

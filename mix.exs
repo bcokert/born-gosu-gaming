@@ -21,7 +21,7 @@ defmodule ExampleConsumer.MixProject do
 
   defp deps do
     [
-      {:nostrum, "~> 0.3", runtime: Mix.env != :test},
+      {:nostrum, "== 0.3.2", runtime: Mix.env != :test},
       {:credo, "~> 1.0.0", only: [:dev, :test], runtime: false},
       {:distillery, "~> 2.0", runtime: false},
       {:logger_file_backend, "~> 0.0.10"}
