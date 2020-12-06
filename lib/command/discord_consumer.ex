@@ -2,6 +2,8 @@ defmodule Command.DiscordConsumer do
   use Nostrum.Consumer
   require Logger
 
+  @api Application.get_env(:born_gosu_gaming, :discord_api)
+
   def start_link do
     Consumer.start_link(__MODULE__)
   end
@@ -58,15 +60,13 @@ defmodule Command.DiscordConsumer do
   end
 
   def handle_event({:MESSAGE_REACTION_ADD, {%{message_id: mid, emoji: %{name: emoji_name}, user_id: uid}}, _}) do
-    user = Nostrum.Cache.UserCache.get!(uid)
-    if (user.bot != true) do
+    if (!isBot?(uid)) do
       Interaction.interact(mid, %{emoji: emoji_name, sender: uid, is_add: true})
     end
   end
 
   def handle_event({:MESSAGE_REACTION_REMOVE, {%{message_id: mid, emoji: %{name: emoji_name}, user_id: uid}}, _}) do
-    user = Nostrum.Cache.UserCache.get!(uid)
-    if (user.bot != true) do
+    if (!isBot?(uid)) do
       Interaction.interact(mid, %{emoji: emoji_name, sender: uid, is_add: false})
     end
   end
@@ -74,4 +74,20 @@ defmodule Command.DiscordConsumer do
   def handle_event(_) do
     :noop
   end
+
+  defp getUser(uid) do
+    case Nostrum.Cache.UserCache.get(uid) do
+      {:ok, user} -> user
+      _ ->
+        case @api.get_user(uid) do
+          {:ok, user} -> user
+          _ -> :invalid
+        end
+    end
+  end
+
+  defp isBot?(%Nostrum.Struct.User{bot: true}), do: true
+  defp isBot?(%Nostrum.Struct.User{bot: nil}), do: false
+  defp isBot?(:invalid), do: false
+  defp isBot?(uid), do: isBot?(getUser(uid))
 end
