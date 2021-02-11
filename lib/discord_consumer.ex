@@ -9,7 +9,7 @@ defmodule DiscordConsumer do
   end
 
   def input_to_command("", discord_msg) do
-    %Command{discord_msg: discord_msg, command: "soon"}
+    %Command{discord_msg: discord_msg, command: "help"}
   end
 
   @spec input_to_command(String.t(), Nostrum.Struct.Message.t()) :: %Command{}
@@ -35,21 +35,26 @@ defmodule DiscordConsumer do
 
   def handle_event({:MESSAGE_CREATE, {msg}, _}) do
     case msg.content do
+      "!help" <> rest ->
+        rest
+          |> String.trim()
+          |> input_to_command(msg)
+          |> Command.run("help")
       "!events" <> rest ->
         rest
           |> String.trim()
           |> input_to_command(msg)
-          |> Command.run_command()
+          |> Command.run("event")
+      "!admin" <> rest ->
+        rest
+          |> String.trim()
+          |> input_to_command(msg)
+          |> Command.run("admin")
       "!mentor" <> rest ->
         rest
           |> String.trim()
           |> input_to_command(msg)
-          |> Command.run_command()
-      "!tryout" <> rest ->
-        "tryout" <> rest
-          |> String.trim()
-          |> input_to_command(msg)
-          |> Command.run_command
+          |> Command.run("mentor")
       str ->
         with true <- Enum.any?(msg.mentions, fn u -> u.id == Nostrum.Cache.Me.get().id end),
              lower <- String.downcase(str),

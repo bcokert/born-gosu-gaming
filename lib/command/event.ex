@@ -18,83 +18,17 @@ defmodule Event do
 
   @reminder_add_emoji "⏰"
 
-  defp num_emojis() do
-    %{
-      "0" => "0️⃣",
-      "1" => "1️⃣",
-      "2" => "2️⃣",
-      "3" => "3️⃣",
-      "4" => "4️⃣",
-      "5" => "5️⃣",
-      "6" => "6️⃣",
-      "7" => "7️⃣",
-      "8" => "8️⃣",
-      "9" => "9️⃣",
-      "10" => "🔟",
-      "11" => "↖️",
-      "12" => "⬅️",
-      "13" => "↙️",
-      "14" => "⬇️",
-      "15" => "↘️",
-      "16" => "➡️",
-      "17" => "↗️",
-      "18" => "⬆️",
-      "19" => "🅿️",
-      "20" => "🅾️",
-      "21" => "ℹ️",
-      "22" => "🅱️",
-      "23" => "🅰️",
-      "24" => "#️⃣",
-    }
-  end
+  def run(%Command{discord_msg: m, command: "help"}), do: help(m.channel_id, m.author.id)
+  def run(%Command{discord_msg: m, command: "dates"}), do: dates(m.channel_id)
+  def run(%Command{discord_msg: m, command: "soon"}), do: soon(m.channel_id, m.guild_id)
+  def run(%Command{discord_msg: m, command: "mine"}), do: mine(m.channel_id, m.author.id, m.guild_id)
+  def run(%Command{discord_msg: m, command: "add", args: [name | _]}), do: add(m.channel_id, m.author.id, m.guild_id, name, m.content)
+  def run(%Command{discord_msg: m, command: "remove", args: [name | _]}), do: remove(m.channel_id, m.author.id, m.guild_id, name)
+  def run(%Command{discord_msg: m, command: command, args: args}), do: unknown(m.channel_id, command, args, m.author.username, m.author.discriminator)
 
-  def default_reminders() do
-    [
-      {7*24*60*60*1000, fn e -> remind_participants(e, "in 7 days") end},
-      {3*24*60*60*1000, fn e -> remind_participants(e, "in 3 days") end},
-      {1*24*60*60*1000, fn e -> remind_participants(e, "tomorrow") end},
-      {3*60*60*1000, fn e -> remind_participants(e, "in 3 hours") end},
-      {30*60*1000, fn e -> remind_participants(e, "30 minutes from now") end},
-      {60*1000, fn e -> remind_participants(e, "in 1 minute!") end},
-    ]
-  end
-
-  def run(command) do
-    with {:ok, channel} <- Nostrum.Cache.ChannelCache.get(command.discord_msg.channel_id),
-         guild <- Nostrum.Cache.GuildCache.get!(command.discord_msg.guild_id) do
-      Logger.info "Attempting #{command.command}(#{Enum.join(command.args, ", ")}) from #{command.discord_msg.author.username}\##{command.discord_msg.author.discriminator} in #{channel.name}"
-      if is_authorized?(command.discord_msg.author.id, guild, command.command) do
-        do_command(command.command, command.args, command.discord_msg)
-      else
-        @api.create_message(channel.id, "I'm sorry, but only members can use this.")
-        Logger.info "#{command.command}(#{Enum.join(command.args, ", ")}) from #{command.discord_msg.author.username}\##{command.discord_msg.author.discriminator} in #{channel.name} was unauthorized"
-      end
-    end
-  end
-
-  defp remind_participants(event, date_str) do
-    Enum.each(event.participants, fn participant -> 
-      with {:ok, channel} <- @api.create_dm(participant) do
-        @api.create_message(channel.id, "This is a reminder for an upcoming event that starts #{date_str}\n#{Event.Formatter.full_summary(event)}")
-      end
-    end)
-  end
-
-  defp do_command("help", _, m), do: help(m.channel_id, m.author.id)
-  defp do_command("adminhelp", _, m), do: adminhelp(m.channel_id, m.author.id)
-  defp do_command("setdaylightsavings", [region, enabled? | _], m), do: setdaylightsavings(m.channel_id, region, enabled?)
-  defp do_command("daylightsavings", _, m), do: daylightsavings(m.channel_id)
-  defp do_command("dates", _, m), do: dates(m.channel_id)
-  defp do_command("soon", _, m), do: soon(m.channel_id, m.guild_id)
-  defp do_command("mine", _, m), do: mine(m.channel_id, m.author.id, m.guild_id)
-  defp do_command("add", [name | _], m), do: add(m.channel_id, m.author.id, m.guild_id, name, m.content)
-  defp do_command("remove", [name | _], m), do: remove(m.channel_id, m.author.id, m.guild_id, name)
-  defp do_command("tryout", [user1, user2 | _], m), do: tryout(m.channel_id, m.guild_id, m.author.id, user1, user2)
-  defp do_command(name, args, m), do: unknown(m.channel_id, name, args, m.author.username, m.author.discriminator)
-
-  defp unknown(channel_id, name, args, username, discriminator) do
-    cmd = "#{name}(#{Enum.join(args, ", ")}) from #{username}\##{discriminator}"
-    @api.create_message(channel_id, "Apologies, but I'm not sure what to do with this: #{cmd}")
+  defp unknown(channel_id, command, args, username, discriminator) do
+    cmd = "`!events #{command} #{Enum.join(args, ", ")}` from #{username}\##{discriminator}"
+    @api.create_message(channel_id, "Apologies, but I'm not sure what to do with this events command: #{cmd}")
   end
 
   defp help(channel_id, author_id) do
@@ -129,56 +63,7 @@ defmodule Event do
           Deletes an event with the given name.
           Only the creator or admin can delete an event.
           eg: '!events remove "BG Super Tourney"'
-
-      - adminhelp
-          Shows the admin specific commands.
-          eg: '!events adminhelp'
       """))
-    end
-  end
-
-  defp adminhelp(channel_id, author_id) do
-    @api.create_message(channel_id, "I'll dm you")
-    with {:ok, channel} <- @api.create_dm(author_id) do
-      @api.create_message(channel.id, String.trim("""
-      Available commands:
-      - daylightsavings
-          Displays what the settings for daylight savings are
-          eg: '!events daylightsavings'
-      
-      - setdaylightsavings <eu|na> <yes|no>
-          Toggles the default output formats between Daylight Savings and Summer
-          times.
-          eg: '!events setdaylightsavings na yes'
-          eg: '!events setdaylightsavings eu no'
-      """))
-    end
-  end
-
-  defp daylightsavings(channel_id) do
-    settings = Settings.get_output_timezones()
-    if Map.has_key?(settings, :EDT), do: @api.create_message(channel_id, "For NA, daylight savings is active")
-    if Map.has_key?(settings, :EST), do: @api.create_message(channel_id, "For NA, daylight savings is not active")
-    if Map.has_key?(settings, :CEST), do: @api.create_message(channel_id, "For EU, daylight savings is active")
-    if Map.has_key?(settings, :CET), do: @api.create_message(channel_id, "For EU, daylight savings is not active")
-  end
-
-  defp setdaylightsavings(channel_id, region, enabled?) do
-    case {region, enabled?} do
-      {"eu", "yes"} ->
-        Settings.set_daylight_savings(true, :eu)
-        @api.create_message(channel_id, "Alright I've set output to use daylight savings for europe")
-      {"eu", "no"} ->
-        Settings.set_daylight_savings(false, :eu)
-        @api.create_message(channel_id, "Alright I've set output to not use daylight savings for europe")
-      {"na", "yes"} ->
-        Settings.set_daylight_savings(true, :na)
-        @api.create_message(channel_id, "Alright I've set output to use daylight savings for north america")
-      {"na", "no"} ->
-        Settings.set_daylight_savings(false, :na)
-        @api.create_message(channel_id, "Alright I've set output to not use daylight savings for north america")
-      _ ->
-        @api.create_message(channel_id, "Invalid region or state. Try `!events setdaylightsavings eu yes` or `!events setdaylightsavings na no`")
     end
   end
 
@@ -388,11 +273,6 @@ defmodule Event do
     end
   end
 
-  defp is_authorized?(author_id, guild, command) do
-    member = @api.get_guild_member!(guild.id, author_id)
-    Authz.authorized_for_command?(member, guild, command)
-  end
-
   defp remind(channel_id, event, user) do
     if !(user.id in event.participants) do
       with :ok <- Event.Persister.set_reminders(event, [user.id] ++ event.participants) do
@@ -413,73 +293,22 @@ defmodule Event do
     end
   end
 
-  def tryout(channel_id, guild_id, author_id, raw_mentee, raw_mentor) when is_binary(raw_mentor) and is_binary(raw_mentee) do
-    guild = Nostrum.Cache.GuildCache.get!(guild_id)
-    mentors = guild
-      |> DiscordQuery.mentors()
-      |> DiscordQuery.matching_users(raw_mentor)
-    non_members = guild
-      |> DiscordQuery.non_members()
-      |> DiscordQuery.matching_users(raw_mentee)
-    author = Nostrum.Cache.UserCache.get!(author_id)
-
-    tryout_response(channel_id, author, mentors, non_members, raw_mentor, raw_mentee)
+  def default_reminders() do
+    [
+      {7*24*60*60*1000, fn e -> remind_participants(e, "in 7 days") end},
+      {3*24*60*60*1000, fn e -> remind_participants(e, "in 3 days") end},
+      {1*24*60*60*1000, fn e -> remind_participants(e, "tomorrow") end},
+      {3*60*60*1000, fn e -> remind_participants(e, "in 3 hours") end},
+      {30*60*1000, fn e -> remind_participants(e, "30 minutes from now") end},
+      {60*1000, fn e -> remind_participants(e, "in 1 minute!") end},
+    ]
   end
 
-  defp tryout_response(channel_id, _, [], [], raw_mentor, raw_mentee) do
-    @api.create_message(channel_id, "No mentors matching '#{raw_mentor}' found, and no non-members matching '#{raw_mentee}' found")
-  end
-  defp tryout_response(channel_id, _, [], mentees, raw_mentor, _) do
-    @api.create_message(channel_id, "No mentors matching '#{raw_mentor}' found, but found matching mentees: #{users_to_csv(mentees)}")
-  end
-  defp tryout_response(channel_id, _, mentors, [], _, raw_mentee) do
-    @api.create_message(channel_id, "No non members matching '#{raw_mentee}' found, but found matching mentors: #{users_to_csv(mentors)}")
-  end
-  defp tryout_response(channel_id, author, mentors, mentees, raw_mentor, raw_mentee) do
-    matches = (for m <- mentors, n <- mentees, do: {m, n})
-      |> Enum.with_index()
-      |> Enum.map(fn {{m, n}, i} -> {m, n, i, num_emojis()["#{i}"], "+tryout #{n} #{m}"} end)
-
-    message = matches
-      |> Enum.map(fn {m, n, _, emoji, _} -> "React with #{emoji} to run `#{"+tryout #{n.username} #{m.username}"}`" end)
-      |> Enum.join("\n")
-
-    with {:ok, %{id: mid}} <- @api.create_message(channel_id, message) do
-      reducer = fn (state, %{emoji: emoji, sender: sender_id, is_add: is_add}) ->
-        user = Nostrum.Cache.UserCache.get!(sender_id)
-        if (user.id != author.id) do
-          @api.create_message(channel_id, "Sorry #{user}, only #{author} can do that for this tryout search")
-        else
-          if is_add do
-            case Enum.find(matches, fn {_, _, _, e, _} -> emoji == e end) do
-              {_, _, _, _, cmd} ->
-                @api.create_message(channel_id, "#{cmd}")
-              _ ->
-                @api.create_message(channel_id, "Sorry #{user}, but #{emoji} is not a valid choice")
-            end
-          end
-        end
-        state
+  defp remind_participants(event, date_str) do
+    Enum.each(event.participants, fn participant -> 
+      with {:ok, channel} <- @api.create_dm(participant) do
+        @api.create_message(channel.id, "This is a reminder for an upcoming event that starts #{date_str}\n#{Event.Formatter.full_summary(event)}")
       end
-
-      Interaction.create(%Interaction{
-        name: "!tryout #{raw_mentee} #{raw_mentor}",
-        mid: mid,
-        mstate: {},
-        reducer: reducer,
-        on_remove: nil,
-      })
-    else
-      error ->
-        logid = DateTime.to_unix(DateTime.utc_now())
-        Logger.info "[#{logid}] Error while running tryouts: #{error}"
-        @api.create_message(channel_id, "Something went wrong. Please tell Physics and give him this: #{logid}")
-    end
-  end
-
-  defp users_to_csv(users) do
-    users
-      |> Enum.map(fn m -> m.username end)
-      |> Enum.join(", ")
+    end)
   end
 end
