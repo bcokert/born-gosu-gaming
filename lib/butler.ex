@@ -1,4 +1,4 @@
-defmodule Command.Butler do
+defmodule Butler do
   require Logger
 
   @type reply :: {:reply, {String.t(), [integer]}}

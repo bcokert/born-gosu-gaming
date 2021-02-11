@@ -4,7 +4,7 @@ defmodule Main do
   def start_link do
     children = if Mix.env != :test do
       [
-        {Command.DiscordConsumer, name: Command.DiscordConsumer},
+        {DiscordConsumer, name: DiscordConsumer},
         {Event.Persister, name: Event.Persister},
         %{id: Interaction, start: {Interaction, :start_link, []}},
         %{id: Event.Reminder.Server, start: {Event.Reminder, :start_link, [Event.default_reminders()]}},

@@ -1,4 +1,4 @@
-defmodule Command.DiscordConsumer do
+defmodule DiscordConsumer do
   use Nostrum.Consumer
   require Logger
 
@@ -40,6 +40,11 @@ defmodule Command.DiscordConsumer do
           |> String.trim()
           |> input_to_command(msg)
           |> Command.run_command()
+      "!mentor" <> rest ->
+        rest
+          |> String.trim()
+          |> input_to_command(msg)
+          |> Command.run_command()
       "!tryout" <> rest ->
         "tryout" <> rest
           |> String.trim()
@@ -49,7 +54,7 @@ defmodule Command.DiscordConsumer do
         with true <- Enum.any?(msg.mentions, fn u -> u.id == Nostrum.Cache.Me.get().id end),
              lower <- String.downcase(str),
              trimmed <- String.trim(lower),
-             {:reply, {resp, img_bytes}} <- Command.Butler.talk(trimmed, msg) do
+             {:reply, {resp, img_bytes}} <- Butler.talk(trimmed, msg) do
           if Enum.empty?(img_bytes) do
             Nostrum.Api.create_message(msg.channel_id, resp)
           else
