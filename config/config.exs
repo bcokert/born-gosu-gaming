@@ -18,13 +18,11 @@ config :nostrum,
 config :born_gosu_gaming,
   discord_api: Nostrum.Api,
   event_db: :"db/event",
-  test_mode_role: "bg-events-tester",
-  creator_role: "Born Gosu"
+  test_mode_role: "bg-events-tester"
 
 if Mix.env == :prod do
   config :born_gosu_gaming,
-    event_db: :"/var/born-gosu-gaming/db/event",
-    is_test_mode: false
+    event_db: :"/var/born-gosu-gaming/db/event"
   
   import_config("./secret/prod/nostrum.exs")
 else

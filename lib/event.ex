@@ -63,7 +63,7 @@ defmodule Event do
     with {:ok, channel} <- Nostrum.Cache.ChannelCache.get(command.discord_msg.channel_id),
          guild <- Nostrum.Cache.GuildCache.get!(command.discord_msg.guild_id) do
       Logger.info "Attempting #{command.command}(#{Enum.join(command.args, ", ")}) from #{command.discord_msg.author.username}\##{command.discord_msg.author.discriminator} in #{channel.name}"
-      if is_authorized(command.discord_msg.author.id, guild) do
+      if is_authorized?(command.discord_msg.author.id, guild, command.command) do
         do_command(command.command, command.args, command.discord_msg)
       else
         @api.create_message(channel.id, "I'm sorry, but only members can use this.")
@@ -82,7 +82,6 @@ defmodule Event do
 
   defp do_command("help", _, m), do: help(m.channel_id, m.author.id)
   defp do_command("adminhelp", _, m), do: adminhelp(m.channel_id, m.author.id)
-  defp do_command("eventchannels", _, m), do: eventchannels(m.channel_id, m.guild_id)
   defp do_command("setdaylightsavings", [region, enabled? | _], m), do: setdaylightsavings(m.channel_id, m.guild_id, m.author.id, region, enabled?)
   defp do_command("daylightsavings", _, m), do: daylightsavings(m.channel_id, m.guild_id, m.author.id)
   defp do_command("dates", _, m), do: dates(m.channel_id)
@@ -143,11 +142,6 @@ defmodule Event do
           Shows this help text.
           eg: '!events adminhelp'
 
-      - eventchannels
-          Shows the list of channels considered safe for teamleague information.
-          This determines several permissions, such as hiding rosters
-          in public channels.
-
       - daylightsavings
           Displays what the settings for daylight savings are
           eg: '!events daylightsavings'
@@ -158,13 +152,6 @@ defmodule Event do
           eg: '!events setdaylightsavings na yes'
           eg: '!events setdaylightsavings eu no'
       """))
-    end
-  end
-
-  defp eventchannels(channel_id, guild_id) do
-    with guild <- Nostrum.Cache.GuildCache.get!(guild_id),
-         channels <- Authz.teamleague_channels(guild) do
-      @api.create_message(channel_id, "These are the channels considered safe for sensitive teamleague information: #{Enum.join(channels, ", ")}")
     end
   end
 
@@ -412,21 +399,10 @@ defmodule Event do
     end
   end
 
-  defp is_authorized(author_id, guild) do
-    is_test_mode = Application.get_env(:born_gosu_gaming, :is_test_mode)
-    test_mode_role = Application.get_env(:born_gosu_gaming, :test_mode_role)
-    creator_role = Application.get_env(:born_gosu_gaming, :creator_role)
-
+  defp is_authorized?(author_id, guild, command) do
     member = @api.get_guild_member!(guild.id, author_id)
-
-    is_creator = DiscordQuery.member_has_role?(member, creator_role, guild)
-    is_tester = DiscordQuery.member_has_role?(member, test_mode_role, guild)
     is_admin = DiscordQuery.member_has_role?(member, "Admins", guild)
-    if is_test_mode do
-      is_tester or is_admin
-    else
-      is_creator or is_admin
-    end
+    is_admin or Authz.authorized_for_command?(member, guild, command)
   end
 
   defp remind(channel_id, event, user) do
