@@ -43,10 +43,19 @@ defmodule Mentor do
     end
   end
 
-  defp userswithopts(channel_id, opts) do
+  defp userswithopts(channel_id, [{"field", field}, {"order", order}, {"count", count}, {"roles", roles}]) do
     # @api.list_guild_members()
-    @api.create_message(channel_id, "Got\n#{opts |> Enum.map(fn {l, r} -> "#{l} = #{r}" end) |> Enum.join("\n")}")
+    @api.create_message(channel_id, "Okay. Searching for #{explain("count", count)} members with these roles: #{explain("roles", roles)}, in #{explain("order", order)} order based on #{explain("field", field)}...")
   end
+
+  defp explain("order", "asc"), do: "ascending"
+  defp explain("order", "desc"), do: "descending"
+
+  defp explain("field", "joindate"), do: "how long they've been here"
+
+  defp explain("count", n), do: "#{n}"
+
+  defp explain("roles", roles), do: "#{roles |> Enum.map(fn r -> "`#{r}`" end) |> Enum.join(", ")}"
 
   defp defaultopts() do
     [
@@ -59,7 +68,8 @@ defmodule Mentor do
 
   defp optssanitizers() do
     [
-      {"count", fn s -> elem(Integer.parse(s), 0) end}
+      {"count", fn s -> elem(Integer.parse(s), 0) end},
+      {"roles", fn roles -> String.split(roles, ",") |> Enum.map(fn r -> String.trim(r) end) end}
     ]
   end
   
