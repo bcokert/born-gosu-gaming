@@ -14,14 +14,18 @@ if [ ! -d ${BUILD_DIR} ]; then
     git clone https://github.com/asdf-vm/asdf.git ${BUILD_DIR} --branch v0.7.2
 fi
 
-source ${BUILD_DIR}/asdf.sh
+chmod a+x .asdf/asdf.sh
+. ${BUILD_DIR}/asdf.sh
 
 asdf plugin-add elixir
 asdf plugin-add erlang
 
 export KERL_CONFIGURE_OPTIONS="--without-javac --with-ssl=$(brew --prefix openssl)"
+asdf install erlang 21.1
+asdf install elixir 1.8.2
+
 asdf global erlang 21.1
 asdf global elixir 1.8.2
 
-echo "You can now run \"source ${BUILD_DIR}/asdf.sh\" in each shell you want to work in"
+echo "You can now run \". ${BUILD_DIR}/asdf.sh\" in each shell you want to work in"
 
