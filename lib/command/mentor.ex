@@ -54,7 +54,7 @@ defmodule Mentor do
   end
 
   defp userswithopts(channel_id, guild_id, [{"field", field}, {"order", order}, {"count", count}, {"roles", roles}, {"allroles", allroles}]) do
-    @api.create_message(channel_id, "Searching for #{explain("count", count)} members with #{explain("allroles", allroles)} of these roles roles: #{explain("roles", roles)}, in #{explain("order", order)} order based on #{explain("field", field)}...")
+    @api.create_message(channel_id, "Searching for #{explain("count", count)} members with #{explain("allroles", allroles)} of these roles: #{explain("roles", roles)}, in #{explain("order", order)} order based on #{explain("field", field)}...")
     users = @api.list_guild_members(guild_id, limit: 1000)
     case users do
       {:error, e} ->
