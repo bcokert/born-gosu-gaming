@@ -21,4 +21,6 @@ MIX_ENV=prod mix release
 rm -rf ${RELEASE_DIR}
 cp -r _build/prod/rel/born_gosu_gaming ${RELEASE_DIR}
 
-MIX_ENV=prod ${RELEASE_DIR}/bin/born_gosu_gaming start
+rm -f ${RELEASE_DIR}/log/output.log
+rm -f ${RELEASE_DIR}/log/errors.log
+MIX_ENV=prod ${RELEASE_DIR}/bin/born_gosu_gaming start >${RELEASE_DIR}/log/output.log 2>${RELEASE_DIR}/log/errors.log
