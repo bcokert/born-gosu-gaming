@@ -43,6 +43,16 @@ defmodule DiscordQuery do
     roleobj != :none and Enum.any?(roles, fn r -> r == roleobj.id end)
   end
 
+  def member_has_any_role?(_, [], _), do: false
+  def member_has_any_role?(m, [next | roles], guild) do
+    member_has_role?(m, next, guild) or member_has_any_role?(m, roles, guild)
+  end
+
+  def member_has_all_roles?(_, [], _), do: true
+  def member_has_all_roles?(m, [next | roles], guild) do
+    member_has_role?(m, next, guild) and member_has_all_roles?(m, roles, guild)
+  end
+
   @spec matching_users([%User{}], String.t()) :: [%User{}]
   def matching_users(users, str) when is_binary(str) do
     users
