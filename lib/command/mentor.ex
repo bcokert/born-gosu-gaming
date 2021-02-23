@@ -53,15 +53,16 @@ defmodule Mentor do
     end
   end
 
-  defp userswithopts(channel_id, guild_id, [{"field", field}, {"order", order}, {"count", count}, {"roles", roles}, {"allroles", allroles}]) do
+  defp userswithopts(channel_id, guild_id, opts = [{"field", field}, {"order", order}, {"count", count}, {"roles", roles}, {"allroles", allroles}]) do
     @api.create_message(channel_id, "Searching for #{explain("count", count)} members with #{explain("allroles", allroles)} of these roles: #{explain("roles", roles)}, in #{explain("order", order)} order based on #{explain("field", field)}...")
     users = @api.list_guild_members(guild_id, limit: 1000)
     case users do
       {:error, e} ->
         @api.create_message(channel_id, "Discord failed to fetch memebers. Try again?")
-        Logger.error("Error when searching discord for members with !events users: #{e}")
+        Logger.error("Error when searching discord for members with !mentor users: #{e}")
       {:ok, members} ->
         with guild <- Nostrum.Cache.GuildCache.get!(guild_id) do
+          Logger.info("Starting user search for !mentor users #{opts |> Enum.map(fn {l, r} -> "#{l}: #{r}" end) |> Enum.join(", ")}")
           members
             |> Enum.filter(fn m -> m.user.bot == nil and rolefilter?(allroles, m, roles, guild) end)
             |> Enum.sort(fn (%Member{joined_at: l}, %Member{joined_at: r}) -> datecompare(l, r, order) end)
@@ -78,6 +79,7 @@ defmodule Mentor do
     @api.create_message(channel_id, "Looks like there are no users matching that criteria. Try widening your search?")
   end
   defp prettyprintusers(users, channel_id, guild) do
+    Logger.info("Found #{Enum.count(users)} matching users")
     output = users
       |> Enum.map(fn m = %Member{joined_at: d, nick: nick, user: %User{username: username}} -> "#{prettyroles(m, guild)} #{prettyname(username, nick)} joined #{prettydate(d)}" end)
       |> Enum.join("\n")

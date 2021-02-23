@@ -1,14 +1,21 @@
 use Mix.Config
 
 config :logger,
-    backends: [{LoggerFileBackend, :debug_log}, {LoggerFileBackend, :info_log}, :console]
+    backends: [{LoggerFileBackend, :info_log}, {LoggerFileBackend, :sasl_log}, :console]
 
 config :logger, :console,
     level: :debug
 
-config :logger, :debug_log,
+config :logger, :info_log,
     path: "log/info.log",
-    level: :debug,
+    handle_sasl_reports: false,
+    level: :info,
+    rotate: %{max_bytes: 1024*1024*1024*20, keep: 5 }
+
+config :logger, :sasl_log,
+    path: "log/sasl.log",
+    handle_sasl_reports: true,
+    level: :error,
     rotate: %{max_bytes: 1024*1024*1024*20, keep: 5 }
 
 config :nostrum,

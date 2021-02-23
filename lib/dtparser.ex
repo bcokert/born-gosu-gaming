@@ -546,10 +546,6 @@ defmodule DTParser do
       |> Enum.sort_by(fn ([name: n1, offset: o1]) -> {o1, n1} end)
   end
 
-  defp tz_to_compare(tz) when byte_size(tz) == 3, do: :binary.decode_unsigned(tz) - :binary.decode_unsigned("aaa") + 1
-  defp tz_to_compare(tz) when byte_size(tz) == 4, do: :binary.decode_unsigned(tz) - :binary.decode_unsigned("aaaa") + 1
-  defp tz_to_compare(tz) when byte_size(tz) == 5, do: :binary.decode_unsigned(tz) - :binary.decode_unsigned("aaaa") + 1
-
   defp process_possible_timezone([]), do: :no_match
   defp process_possible_timezone([_]), do: :no_match
   defp process_possible_timezone([_, tz]), do: process_legal_timezone(tz)

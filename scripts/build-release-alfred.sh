@@ -22,4 +22,4 @@ rm -rf ${RELEASE_DIR}
 cp -r _build/prod/rel/born_gosu_gaming ${RELEASE_DIR}
 
 mkdir -p ${RELEASE_DIR}/log/
-MIX_ENV=prod ${RELEASE_DIR}/bin/born_gosu_gaming start >${RELEASE_DIR}/log/output.log 2>${RELEASE_DIR}/log/errors.log
+MIX_ENV=prod ${RELEASE_DIR}/bin/born_gosu_gaming start
