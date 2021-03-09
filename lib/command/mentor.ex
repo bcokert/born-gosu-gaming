@@ -79,11 +79,12 @@ defmodule Mentor do
     @api.create_message(channel_id, "Looks like there are no users matching that criteria. Try widening your search?")
   end
   defp prettyprintusers(users, channel_id, guild) do
-    Logger.info("Found #{Enum.count(users)} matching users")
-    output = users
+    @api.create_message(channel_id, "Found #{Enum.count(users)} matching users. Showing 20 at a time...")
+    users
       |> Enum.map(fn m = %Member{joined_at: d, nick: nick, user: %User{username: username}} -> "#{prettyroles(m, guild)} #{prettyname(username, nick)} joined #{prettydate(d)}" end)
-      |> Enum.join("\n")
-    @api.create_message(channel_id, output)
+      |> Enum.chunk_every(20)
+      |> Enum.map(fn chunk -> Enum.join(chunk, "\n") end)
+      |> Enum.map(fn block -> @api.create_message(channel_id, block) end)
   end
 
   defp prettyroles(m, guild) do
