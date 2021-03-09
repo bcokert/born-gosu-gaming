@@ -90,10 +90,11 @@ defmodule Mentor do
     rank = ["Grandmaster", "Master", "Diamond", "Platinum", "Gold", "Silver", "Bronze"]
       |> Enum.find("", fn r -> DiscordQuery.member_has_role?(m, r, guild) end)
       |> getmatchingemoji(":question:", guild)
-    race = ["Terran", "Zerg", "Protoss", "Random"]
-      |> Enum.find("", fn r -> DiscordQuery.member_has_role?(m, r, guild) end)
-      |> getmatchingemoji(":grey_question:", guild)
-    "#{race}#{rank}"
+    races = ["Terran", "Zerg", "Protoss", "Random"]
+      |> Enum.map(fn r -> if DiscordQuery.member_has_role?(m, r, guild) do r else ":black_medium_square:" end end)
+      |> Enum.map(fn r -> getmatchingemoji(r, ":black_medium_square:", guild) end)
+      |> Enum.join("")
+    "#{races}#{rank}"
   end
 
   defp getmatchingemoji(emojiname, default, guild) do
